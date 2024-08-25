@@ -1,0 +1,21 @@
+{
+  "semi": true,
+  "trailingComma": "all",
+  "singleQuote": true,
+  "printWidth": 110,
+  "useTabs": false,
+  "tabWidth": 2,
+  "importOrder": [
+    "<THIRD_PARTY_MODULES>",
+    "^\\$types/(.*)$",
+    "^\\$(providers|core|services)|@prisma/(.*)$",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "plugins": [
+    "prettier-plugin-svelte",
+    "prettier-plugin-tailwindcss",
+    "@trivago/prettier-plugin-sort-imports"
+  ]
+}
