@@ -18,10 +18,12 @@
 
 ## Screenshots
 
-<img src="./screenshots/1.png" alt="Screenshot of mini-ledger" width="300" />
-<img src="./screenshots/2.png" alt="Screenshot of mini-ledger" width="300" />
-<img src="./screenshots/3.png" alt="Screenshot of mini-ledger" width="300" />
-<img src="./screenshots/4.png" alt="Screenshot of mini-ledger" width="300" />
+<p align="center">
+  <img src="./screenshots/1.png" alt="Screenshot of mini-ledger" width="300" />
+  <img src="./screenshots/2.png" alt="Screenshot of mini-ledger" width="300" />
+  <img src="./screenshots/3.png" alt="Screenshot of mini-ledger" width="300" />
+  <img src="./screenshots/4.png" alt="Screenshot of mini-ledger" width="300" />
+</p>
 
 ## Getting Started
 
