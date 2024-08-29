@@ -77,6 +77,12 @@ You can install PostgreSQL directly on your system or use a Docker container for
    npm run dev
    ```
 
+## Todo
+
+- [ ] Add support for english language
+- [ ] Add support for multiple currencies
+- [ ] Make the application responsive
+
 ## Contributing
 
 Contributions are welcome! Please fork the repository and use a feature branch. Pull requests are warmly welcome.
