@@ -15,7 +15,7 @@ const deleteTransactionSchema = z.object({
   }),
 });
 
-const TRANSACTION_PER_PAGE = 20;
+const TRANSACTION_PER_PAGE = 5;
 
 export const load: PageServerLoad = async function ({ url }) {
   const page = Math.max(Number(url.searchParams.get('page')) || 1, 1);
