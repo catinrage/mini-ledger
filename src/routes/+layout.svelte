@@ -6,6 +6,8 @@
   import 'simplebar/dist/simplebar.css';
   import 'vazirmatn/Vazirmatn-font-face.css';
 
+  import waves from '$lib/assets/svg/waves.svg';
+
   import { page } from '$app/stores';
 
   import { setConfirmDialogStateManager } from '$lib/components/globals/dialogs/confirm/StateManager.svelte';
@@ -65,11 +67,21 @@
 <Toaster />
 
 <main class="relative h-full p-6 text-black duration-100">
-  <!-- <img class="fixed bottom-0 left-0" src={waves} alt="" /> -->
+  <img class="fixed bottom-0 left-0" src={waves} alt="" />
   <div
-    class="eng fixed bottom-3 left-0 z-10 hidden w-full text-center text-xs uppercase text-black/80 sm:block"
+    class="eng ltr fixed bottom-3 left-0 z-20 hidden w-full items-center justify-center text-center text-xs uppercase text-black/80 sm:flex"
   >
-    taheri engineering group | ledger v1.0.0
+    <div class="flex gap-2">
+      <a
+        class="flex gap-1 underline duration-100 hover:text-accent-500"
+        href="https://github.com/catinrage/mini-ledger"
+        target="_blank"
+      >
+        <iconify-icon class="relative bottom-px text-sm" icon="mage:github"></iconify-icon>
+        <span>github</span>
+      </a>
+      <span>| mini - ledger v1.0.0</span>
+    </div>
   </div>
 
   <div class="relative z-10 flex h-full w-full flex-col items-center gap-2 sm:mt-10">
