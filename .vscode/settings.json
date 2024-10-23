@@ -1,0 +1,21 @@
+{
+  "cSpell.words": [
+    "Anek",
+    "Backquote",
+    "Chamferable",
+    "clazz",
+    "entypo",
+    "mult",
+    "normalise",
+    "unsubscriber"
+  ],
+  "material-icon-theme.folders.associations": {
+    "drivers": "controller",
+    "objects": "components",
+    "effects": "animation"
+  },
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.organizeImports": "explicit"
+  }
+}

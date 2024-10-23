@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,300;1,400;1,500;1,600;1,700;1,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Anek+Devanagari:wght@100..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    height: 100%;
+    overflow: hidden;
+    direction: rtl;
+  }
+  body {
+    font-family: 'Vazirmatn', 'Rubik';
+    height: 100%;
+  }
+  svg {
+    outline: none;
+  }
+  input[type='text']:focus,
+  input[type='number']:focus,
+  textarea:focus {
+    @apply !outline-none;
+  }
+  main {
+    background-image: linear-gradient(to right bottom, #f5f5f5, #f0f0f0, #ebebeb, #e6e6e6, #e1e1e1);
+  }
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer utilities {
+  .ltr {
+    direction: ltr;
+  }
+  .rtl {
+    direction: rtl;
+  }
+  .eng {
+    font-family: 'Anek Devanagari', sans-serif !important;
+  }
+  .fa {
+    font-family: 'Vazirmatn', 'monospace' !important;
+  }
+  .press-effect {
+    transition-duration: 75ms;
+    &:active {
+      scale: 0.95;
+    }
+  }
+}
+
+@layer components {
+  .no-arrows::-webkit-outer-spin-button,
+  .no-arrows::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-arrows {
+    appearance: textfield;
+    -moz-appearance: textfield;
+  }
+  .no-outline * {
+    outline: none;
+  }
+}
+
+.datepicker-plot-area {
+  font-family: 'Vazirmatn' !important;
+  border: 0;
+  border-radius: 1rem;
+  padding: 1rem;
+}
+.datepicker-plot-area {
+  translate: (0, -100%);
+}
+.datepicker-plot-area .datepicker-time-view {
+  border-top: unset !important;
+  @apply rounded-xl;
+}
