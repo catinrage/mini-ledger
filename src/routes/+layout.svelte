@@ -72,7 +72,7 @@
     taheri engineering group | ledger v1.0.0
   </div>
 
-  <div class="relative z-10 flex h-full w-full flex-col items-center gap-2 sm:mt-10">
+  <div class="relative z-10 flex h-full w-full flex-col items-center gap-2 sm:mt-6">
     <div class="flex w-full grow flex-col items-center gap-2 sm:w-200">
       <div class="flex w-full gap-2 rounded-md bg-white px-4 py-2 text-xs">
         <a
