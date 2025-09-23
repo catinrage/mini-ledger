@@ -26,3 +26,4 @@ CREATE TABLE "Settings" (
 
     CONSTRAINT "Settings_pkey" PRIMARY KEY ("id")
 );
+
