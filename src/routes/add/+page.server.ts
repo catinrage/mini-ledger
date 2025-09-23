@@ -59,7 +59,9 @@ export const load: PageServerLoad = async (event) => {
 export const actions = {
   default: async (event) => {
     const form = await superValidate(event, zod(createTransactionSchema));
+    
     if (!form.valid) return fail(400, { form });
+    
     try {
       await prisma.transaction.create({
         data: form.data as any,

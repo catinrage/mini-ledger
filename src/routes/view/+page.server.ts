@@ -5,13 +5,42 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 
-import type { Prisma, TransactionType } from '@prisma/client';
+import { TransactionType, type Prisma } from '@prisma/client';
 
 import type { Actions, PageServerLoad } from './$types';
 
 const deleteTransactionSchema = z.object({
   id: z.string({
     message: 'این مقدار باید از نوع رشته باشد',
+  }),
+});
+
+const updateTransactionSchema = z.object({
+  id: z.string({
+    message: 'این مقدار باید از نوع رشته باشد',
+  }),
+  party: z
+    .string({
+      message: 'نام شخص باید از نوع رشته باشد',
+    })
+    .min(1, {
+      message: 'نام شخص نباید خالی باشد',
+    }),
+  type: z.nativeEnum(TransactionType, {
+    message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
+  }),
+  amount: z
+    .string({
+      message: 'مقدار تراکنش باید از نوع عدد باشد',
+    }).transform((val) => parseInt(val.replaceAll(',', ''), 10))
+    ,
+  description: z
+    .string({
+      message: 'توضیحات باید از نوع رشته باشد',
+    })
+    .optional(),
+  date: z.date({
+    message: 'تاریخ تراکنش باید از نوع تاریخ باشد',
   }),
 });
 
@@ -153,6 +182,37 @@ export const actions = {
         },
       });
       return message(form, 'تراکنش با موفقیت حذف شد');
+    } catch (error) {
+      return {
+        status: 500,
+        form,
+      };
+    }
+  },
+  
+  updateTransaction: async (event) => {
+    const form = await superValidate(event, zod(updateTransactionSchema));
+
+    if (!form.valid) {
+      return {
+        status: 400,
+        form,
+      };
+    }
+    try {
+      await prisma.transaction.update({
+        where: {
+          id: form.data.id,
+        },
+        data: {
+          party: form.data.party,
+          type: form.data.type,
+          amount: form.data.amount,
+          description: form.data.description || '',
+          date: form.data.date,
+        },
+      });
+      return message(form, 'تراکنش با موفقیت به‌روزرسانی شد');
     } catch (error) {
       return {
         status: 500,

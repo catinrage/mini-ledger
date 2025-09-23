@@ -30,24 +30,37 @@
     delayMs: 300,
     clearOnSubmit: 'errors',
     invalidateAll: true,
-    async onSubmit({ cancel }) {
-      const confirm = await ConfirmDialogStateManager.open({
-        type: 'Danger',
-        message: 'آیا مطمعنید که میخواهید این تراکنش را حذف کنید ؟',
-      });
-      if (!confirm) cancel();
+    async onSubmit({ cancel, action }) {
+      if (action.search === '?/deleteTransaction') {
+        const confirm = await ConfirmDialogStateManager.open({
+          type: 'Danger',
+          message: 'آیا مطمعنید که میخواهید این تراکنش را حذف کنید ؟',
+        });
+        if (!confirm) cancel();
+      }
     },
     onResult(event) {
       if (event.result.type === 'success') {
-        ToasterStateManager.add({
-          type: 'delete',
-          message: 'تراکنش با موقیت حذف شد',
-          duration: 5000,
-        });
+        // Check the action URL to determine which action was performed
+        const action = event.formEl.action;
+        if (action.includes('deleteTransaction')) {
+          ToasterStateManager.add({
+            type: 'delete',
+            message: 'تراکنش با موقیت حذف شد',
+            duration: 5000,
+          });
+        } else if (action.includes('updateTransaction')) {
+          ToasterStateManager.add({
+            type: 'success',
+            message: 'تراکنش با موفقیت به‌روزرسانی شد',
+            duration: 5000,
+          });
+          view = 'none';
+        }
       } else {
         ToasterStateManager.add({
           type: 'error',
-          message: 'خطا در هنگام حذف تراکنش',
+          message: 'خطا در انجام عملیات',
           duration: 5000,
         });
       }
@@ -60,7 +73,8 @@
     | 'add-filter-date'
     | 'add-filter-party'
     | 'add-filter-type'
-    | 'add-filter-description' = $state('none');
+    | 'add-filter-description'
+    | 'edit-transaction' = $state('none');
 
   let showingFilterList = $state(false);
 
@@ -78,6 +92,15 @@
     party: '',
     keywords: '',
     type: TransactionType.DEPOSIT,
+  });
+
+  const editFormValues = $state({
+    id: '',
+    party: '',
+    amount: 0,
+    type: TransactionType.DEPOSIT,
+    description: '',
+    date: new Date(),
   });
 
   page.subscribe((value) => {
@@ -137,6 +160,21 @@
     const filter = new DescriptionFilter($page, { keywords });
     filters = [...filters, filter];
     filter.apply();
+    view = 'none';
+  }
+
+  function openEditTransaction(transaction: any) {
+    editFormValues.id = transaction.id;
+    editFormValues.party = transaction.party;
+    editFormValues.amount = transaction.amount.toString();
+    editFormValues.type = transaction.type;
+    editFormValues.description = transaction.description;
+    editFormValues.date = new Date(transaction.date);
+    view = 'edit-transaction';
+  }
+
+  function updateTransaction() {
+    // This will be handled by the form submission
     view = 'none';
   }
 
@@ -287,12 +325,12 @@
     <div class="w-1/6">
       <span>تراز</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
     </div>
-    <div class="w-1/12">حذف</div>
+    <div class="w-1/12">عملیات</div>
   </div>
   <div class="flex flex-col gap-2">
     <form method="post" use:enhance use:autoAnimate>
       {#each data.transactions as transaction (transaction.id)}
-        <TransactionItem {...transaction} />
+        <TransactionItem {...transaction} onEdit={openEditTransaction} />
       {:else}
         <div class="flex items-center p-3 text-sm">
           <p class="text-black/50">تراکنشی یافت نشد</p>
@@ -453,6 +491,62 @@
           addDescriptionFilter(filterFormValues.keywords);
         }}
       />
+    </div>
+  </LightBox>
+{/if}
+
+<!-- Edit Transaction -->
+{#if view === 'edit-transaction'}
+  <LightBox
+    onclick={(event) => {
+      if (event.target === event.currentTarget) {
+        view = 'none';
+      }
+    }}
+  >
+    <div class="flex flex-col gap-5 rounded-xl bg-white p-5 text-xs">
+      <h3 class="text-base font-bold text-black">ویرایش تراکنش</h3>
+      <form method="post" action="?/updateTransaction" use:enhance class="flex flex-col gap-5">
+        <input type="hidden" name="id" value={editFormValues.id} />
+        
+        <div class="relative w-72">
+          <PartySelector name="party" label="شخص" bind:value={editFormValues.party} suggestions={data.parties} />
+        </div>
+        
+        <div class="relative w-72">
+          <Currency name="amount" label="مقدار" bind:value={editFormValues.amount as unknown as string} />
+        </div>
+        
+        <div class="relative w-72">
+          <TransactionTypeSelector name="type" label="نوع تراکنش" bind:value={editFormValues.type} />
+        </div>
+        
+        <div class="relative w-72">
+          <DateSelector name="date" label="تاریخ تراکنش" bind:value={editFormValues.date} />
+        </div>
+        
+        <div class="relative w-72">
+          <TextArea name="description" label="توضیحات تراکنش" bind:value={editFormValues.description} />
+        </div>
+        
+        <div class="flex gap-3">
+          <button
+            type="submit"
+            class="flex items-center gap-1.5 rounded-xl bg-accent-600 px-3 py-1.5 text-white duration-75 hover:bg-accent-700"
+          >
+            <iconify-icon class="text-lg" icon="ic:baseline-save"></iconify-icon>
+            <span>ذخیره تغییرات</span>
+          </button>
+          <button
+            type="button"
+            class="flex items-center gap-1.5 rounded-xl bg-gray-600 px-3 py-1.5 text-white duration-75 hover:bg-gray-700"
+            onclick={() => view = 'none'}
+          >
+            <iconify-icon class="text-lg" icon="ic:baseline-cancel"></iconify-icon>
+            <span>لغو</span>
+          </button>
+        </div>
+      </form>
     </div>
   </LightBox>
 {/if}

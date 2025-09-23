@@ -9,6 +9,7 @@
     description,
     date,
     balance,
+    onEdit,
   }: {
     id: string;
     party: string;
@@ -17,6 +18,7 @@
     description: string;
     date: Date;
     balance: number;
+    onEdit?: (transaction: any) => void;
   } = $props();
 </script>
 
@@ -49,14 +51,23 @@
       <span dir="ltr">{currencyNumberFormatter(balance)}</span>
     </div>
     <div class="w-1/12 pr-2">
-      <button
-        class=" flex items-center text-sm text-black/60 duration-75 hover:text-rose-500"
-        formaction="?/deleteTransaction"
-        name="id"
-        value={id}
-      >
-        <iconify-icon icon="material-symbols:contract-delete-outline-rounded"></iconify-icon>
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          class="flex items-center text-sm text-black/60 duration-75 hover:text-blue-500"
+          onclick={() => onEdit?.({ id, party, amount, type, description, date, balance })}
+        >
+          <iconify-icon icon="material-symbols:edit-outline-rounded"></iconify-icon>
+        </button>
+        <button
+          class="flex items-center text-sm text-black/60 duration-75 hover:text-rose-500"
+          formaction="?/deleteTransaction"
+          name="id"
+          value={id}
+        >
+          <iconify-icon icon="material-symbols:contract-delete-outline-rounded"></iconify-icon>
+        </button>
+      </div>
     </div>
   </div>
   {#if description.replaceAll(' ', '') !== ''}
