@@ -26,7 +26,7 @@
         persian: {
           locale: 'fa',
           showHint: true,
-          leapYearMode: 'algorithmic',
+          leapYearMode: 'astronomical'
         },
         gregorian: {
           locale: 'en',
