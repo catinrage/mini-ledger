@@ -91,6 +91,14 @@
           <iconify-icon class="text-base" icon="line-md:edit"></iconify-icon>
           <span>ثبت تراکنش جدید</span>
         </a>
+        <a
+          class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:text-black"
+          class:active={view === 'settings'}
+          href="settings"
+        >
+          <iconify-icon class="text-base" icon="line-md:cog"></iconify-icon>
+          <span>تنظیمات</span>
+        </a>
       </div>
       <div class="flex h-full w-full flex-col gap-4 rounded-md bg-white p-4 text-xs sm:h-fit">
         {@render children()}

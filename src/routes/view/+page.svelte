@@ -18,6 +18,7 @@
   import TransactionTypeSelector from '$lib/components/inputs/TransactionTypeSelector.svelte';
   import LightBox from '$lib/components/LightBox.svelte';
   import { AmountFilter, DateFilter, DescriptionFilter, Filter, PartyFilter, TypeFilter } from '$lib/filters';
+  import { currencyNumberFormatter } from '$lib/helpers';
   import { TransactionType } from '@prisma/client';
   import { fly } from 'svelte/transition';
 
@@ -303,7 +304,7 @@
     {/if}
   </div>
 </div>
-<div class="flex divide-x divide-x-reverse">
+<div class="flex flex-wrap divide-x divide-x-reverse gap-y-2">
   <span class="px-2"
     >تعداد کل تراکنش ها : <strong class="text-accent-600">{data.totalNumberOfTransactions}</strong></span
   >
@@ -311,6 +312,11 @@
     تعداد تراکتش ها با توجه به فیلتر ها : <strong class="text-accent-600">{data.numberOfTransactions}</strong
     ></span
   >
+  <span class="px-2">
+    موجودی پایه : <strong class="text-indigo-600">{currencyNumberFormatter(data.baselineBalance)} تومان</strong
+    ></span
+  >
+
 </div>
 <div
   class="flex shrink-[1] grow basis-0 flex-col divide-y divide-dashed divide-black/10 overflow-y-auto overflow-x-hidden sm:min-h-[600px]"

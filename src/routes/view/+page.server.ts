@@ -117,6 +117,14 @@ export const load: PageServerLoad = async function ({ url }) {
     orderBy: { createdAt: 'desc' },
   });
 
+  // Get baseline balance from settings
+  let settings = await prisma.settings.findFirst();
+  if (!settings) {
+    settings = await prisma.settings.create({
+      data: { baselineBalance: 0 }
+    });
+  }
+
   try {
     const transactions = await prisma.transaction.findMany({
       where,
@@ -160,6 +168,7 @@ export const load: PageServerLoad = async function ({ url }) {
       currentPage: page,
       parties: parties.map((p) => p.party),
       TRANSACTION_PER_PAGE,
+      baselineBalance: settings.baselineBalance,
     };
   } catch (error) {
     console.error(error);
