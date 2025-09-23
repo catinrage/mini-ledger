@@ -52,11 +52,8 @@ COPY prisma ./prisma
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/build ./build
 
-# Mark the Prisma migration as applied to avoid reapplying it.
-RUN bunx prisma migrate resolve --applied 0_init
-
 # Expose the port that the application listens on.
 EXPOSE 3000
 
 # Run the application using Bun.
-CMD bun prisma migrate deploy push && bun start
+CMD bun prisma migrate deploy && bun start
