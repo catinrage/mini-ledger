@@ -4,6 +4,9 @@
 # Use Bun & Node image as the base image for all stages.
 FROM imbios/bun-node:22-slim as base
 
+# Install OpenSSL for handling secure connections.
+RUN apt-get update -y && apt-get install -y openssl
+
 # Set working directory for all build stages.
 WORKDIR /usr/src/app
 
