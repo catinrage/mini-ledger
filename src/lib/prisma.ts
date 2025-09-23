@@ -19,12 +19,13 @@ export const prisma = basePrisma.$extends({
             });
           }
           
-          // get list of all transaction before this transaction including this transaction
+          // get list of all non-applied transactions before this transaction including this transaction
           const priorTransactions = await basePrisma.transaction.findMany({
             where: {
               date: {
                 lte: data.date,
               },
+              applied: false, // Only include non-applied transactions
             },
             select: {
               amount: true,

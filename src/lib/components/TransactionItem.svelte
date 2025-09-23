@@ -24,7 +24,7 @@
 
 <div class="flex flex-col gap-2 border-b border-dashed border-black/5 p-4 duration-75 hover:bg-slate-100">
   <div class="flex w-full items-center">
-    <div class="w-1/4">{party}</div>
+    <div class="w-1/5">{party}</div>
     <div class="w-1/6">{currencyNumberFormatter(amount)}</div>
     <div class="w-1/6">
       {#if type === 'WITHDRAW'}
@@ -50,12 +50,22 @@
     <div class="rtl w-1/6" class:text-teal-500={balance > 0} class:text-rose-500={balance < 0}>
       <span dir="ltr">{currencyNumberFormatter(balance)}</span>
     </div>
-    <div class="w-1/12 pr-2">
+    <div class="w-1/6 pr-2">
       <div class="flex items-center gap-1">
+        <button
+          class="flex items-center text-sm text-black/60 duration-75 hover:text-green-500"
+          formaction="?/applyTransaction"
+          name="id"
+          value={id}
+          title="اعمال به موجودی پایه"
+        >
+          <iconify-icon icon="material-symbols:check-circle-outline-rounded"></iconify-icon>
+        </button>
         <button
           type="button"
           class="flex items-center text-sm text-black/60 duration-75 hover:text-blue-500"
           onclick={() => onEdit?.({ id, party, amount, type, description, date, balance })}
+          title="ویرایش"
         >
           <iconify-icon icon="material-symbols:edit-outline-rounded"></iconify-icon>
         </button>
@@ -64,6 +74,7 @@
           formaction="?/deleteTransaction"
           name="id"
           value={id}
+          title="حذف"
         >
           <iconify-icon icon="material-symbols:contract-delete-outline-rounded"></iconify-icon>
         </button>

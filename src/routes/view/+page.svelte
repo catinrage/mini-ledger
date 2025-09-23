@@ -38,6 +38,12 @@
           message: 'آیا مطمعنید که میخواهید این تراکنش را حذف کنید ؟',
         });
         if (!confirm) cancel();
+      } else if (action.search === '?/applyTransaction') {
+        const confirm = await ConfirmDialogStateManager.open({
+          type: 'Normal',
+          message: 'آیا مطمعنید که میخواهید این تراکنش را به موجودی پایه اعمال کنید؟ این عمل غیرقابل بازگشت است.',
+        });
+        if (!confirm) cancel();
       }
     },
     onResult(event) {
@@ -57,6 +63,12 @@
             duration: 5000,
           });
           view = 'none';
+        } else if (action.includes('applyTransaction')) {
+          ToasterStateManager.add({
+            type: 'success',
+            message: 'تراکنش با موفقیت به موجودی پایه اعمال شد',
+            duration: 5000,
+          });
         }
       } else {
         ToasterStateManager.add({
@@ -322,7 +334,7 @@
   class="flex shrink-[1] grow basis-0 flex-col divide-y divide-dashed divide-black/10 overflow-y-auto overflow-x-hidden sm:min-h-[600px]"
 >
   <div class="flex px-4 py-2 font-bold">
-    <div class="w-1/4">شخص</div>
+    <div class="w-1/5">شخص</div>
     <div class="w-1/6">
       <span>مقدار</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
     </div>
@@ -331,7 +343,7 @@
     <div class="w-1/6">
       <span>تراز</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
     </div>
-    <div class="w-1/12">عملیات</div>
+    <div class="w-1/6">عملیات</div>
   </div>
   <div class="flex flex-col gap-2">
     <form method="post" use:enhance use:autoAnimate>

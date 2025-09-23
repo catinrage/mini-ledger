@@ -44,6 +44,12 @@ const updateTransactionSchema = z.object({
   }),
 });
 
+const applyTransactionSchema = z.object({
+  id: z.string({
+    message: 'این مقدار باید از نوع رشته باشد',
+  }),
+});
+
 const TRANSACTION_PER_PAGE = 20;
 
 export const load: PageServerLoad = async function ({ url }) {
@@ -57,7 +63,9 @@ export const load: PageServerLoad = async function ({ url }) {
   const type = url.searchParams.get('type') as TransactionType | undefined;
   const keywords = url.searchParams.get('keywords');
 
-  const where: Prisma.TransactionWhereInput = {};
+  const where: Prisma.TransactionWhereInput = {
+    applied: false, // Only show non-applied transactions
+  };
 
   if (id) {
     where.id = id;
@@ -160,6 +168,19 @@ export const load: PageServerLoad = async function ({ url }) {
       balance: number;
     }[];
 
+    // Calculate current total balance (baseline + all non-applied transactions)
+    const allNonAppliedTransactions = await prisma.transaction.findMany({
+      where: { applied: false },
+      select: {
+        amount: true,
+        type: true,
+      },
+    });
+    const currentTotalBalance = allNonAppliedTransactions.reduce(
+      (acc, transaction) => acc + transaction.amount * (transaction.type === 'DEPOSIT' ? 1 : -1),
+      settings.baselineBalance,
+    );
+
     return {
       form,
       transactions: sanitizedTransactions,
@@ -169,6 +190,7 @@ export const load: PageServerLoad = async function ({ url }) {
       parties: parties.map((p) => p.party),
       TRANSACTION_PER_PAGE,
       baselineBalance: settings.baselineBalance,
+      currentTotalBalance,
     };
   } catch (error) {
     console.error(error);
@@ -223,6 +245,64 @@ export const actions = {
       });
       return message(form, 'تراکنش با موفقیت به‌روزرسانی شد');
     } catch (error) {
+      return {
+        status: 500,
+        form,
+      };
+    }
+  },
+
+  applyTransaction: async (event) => {
+    const form = await superValidate(event, zod(applyTransactionSchema));
+    if (!form.valid) {
+      return {
+        status: 400,
+        form,
+      };
+    }
+    
+    try {
+      // Get the transaction to apply
+      const transaction = await prisma.transaction.findUnique({
+        where: { id: form.data.id },
+      });
+      
+      if (!transaction) {
+        return {
+          status: 404,
+          form,
+        };
+      }
+      
+      // Get current settings
+      let settings = await prisma.settings.findFirst();
+      if (!settings) {
+        settings = await prisma.settings.create({
+          data: { baselineBalance: 0 }
+        });
+      }
+      
+      // Calculate the new baseline balance
+      const amountChange = transaction.amount * (transaction.type === 'DEPOSIT' ? 1 : -1);
+      const newBaselineBalance = settings.baselineBalance + amountChange;
+
+      console.log({newBaselineBalance})
+      
+      // Update settings with new baseline balance and mark transaction as applied
+      await Promise.all([
+        prisma.settings.update({
+          where: { id: settings.id },
+          data: { baselineBalance: newBaselineBalance },
+        }),
+        prisma.transaction.update({
+          where: { id: form.data.id },
+          data: { applied: true },
+        }),
+      ]);
+      
+      return message(form, 'تراکنش با موفقیت به موجودی پایه اعمال شد');
+    } catch (error) {
+      console.error('Error applying transaction:', error);
       return {
         status: 500,
         form,
