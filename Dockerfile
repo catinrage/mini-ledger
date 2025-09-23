@@ -56,4 +56,4 @@ COPY --from=build /usr/src/app/build ./build
 EXPOSE 3000
 
 # Run the application using Bun.
-CMD bun prisma migrate deploy && bun start
+CMD bun prisma db push && bun start
