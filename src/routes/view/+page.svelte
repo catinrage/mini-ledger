@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Pagination from '$lib/components/Pagination.svelte';
   import TransactionItem from '$lib/components/TransactionItem.svelte';
   import autoAnimate from '@formkit/auto-animate';
   import { superForm } from 'sveltekit-superforms';
@@ -115,18 +114,6 @@
     description: '',
     date: new Date(),
   });
-
-  page.subscribe((value) => {
-    updatePages();
-  });
-
-  function updatePages() {
-    setTimeout(() => {
-      for (const filter of filters) {
-        filter.updatePage($page);
-      }
-    }, 50);
-  }
 
   function addAmountFilter(min: number, max: number) {
     if (min >= max && max !== 0) {
@@ -357,12 +344,6 @@
     </form>
   </div>
 </div>
-
-<Pagination
-  count={data.numberOfTransactions}
-  perPage={data.TRANSACTION_PER_PAGE}
-  defaultPage={data.currentPage}
-/>
 
 <!-- Amount Filter -->
 {#if view === 'add-filter-amount'}

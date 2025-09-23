@@ -1,5 +1,4 @@
 import { prisma } from '$lib/prisma';
-import { redirect } from '@sveltejs/kit';
 import superjson from 'superjson';
 import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
@@ -50,10 +49,7 @@ const applyTransactionSchema = z.object({
   }),
 });
 
-const TRANSACTION_PER_PAGE = 20;
-
 export const load: PageServerLoad = async function ({ url }) {
-  const page = Math.max(Number(url.searchParams.get('page')) || 1, 1);
   const id = url.searchParams.get('id');
   const party = url.searchParams.get('party');
   const minDate = Number(url.searchParams.get('minDate'));
@@ -111,13 +107,6 @@ export const load: PageServerLoad = async function ({ url }) {
   const numberOfTransactions = await prisma.transaction.count({
     where,
   });
-  const numberOfPages = Math.max(Math.ceil(numberOfTransactions / TRANSACTION_PER_PAGE), 1);
-
-  if (page > numberOfPages) {
-    let query = new URLSearchParams(url.searchParams.toString());
-    query.delete('page');
-    throw redirect(302, `?${query.toString()}`);
-  }
 
   const parties = await prisma.transaction.findMany({
     distinct: ['party'],
@@ -136,8 +125,6 @@ export const load: PageServerLoad = async function ({ url }) {
   try {
     const transactions = await prisma.transaction.findMany({
       where,
-      skip: (page - 1) * TRANSACTION_PER_PAGE,
-      take: TRANSACTION_PER_PAGE,
       orderBy: {
         date: 'asc',
       },
@@ -186,9 +173,7 @@ export const load: PageServerLoad = async function ({ url }) {
       transactions: sanitizedTransactions,
       numberOfTransactions,
       totalNumberOfTransactions,
-      currentPage: page,
       parties: parties.map((p) => p.party),
-      TRANSACTION_PER_PAGE,
       baselineBalance: settings.baselineBalance,
       currentTotalBalance,
     };

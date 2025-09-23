@@ -15,7 +15,7 @@ export abstract class Filter {
   }
 
   public apply() {
-    this.query.set('page', '1');
+    this.query.delete('page');
     goto(`?${this.query.toString()}`);
   }
 
