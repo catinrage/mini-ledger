@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CircularCheckbox from '$lib/components/inputs/CircularCheckbox.svelte';
   import { currencyNumberFormatter } from '$lib/helpers';
   import type { TransactionType } from '@prisma/client';
   const {
@@ -22,50 +23,52 @@
     includeInBalance: boolean;
     onEdit?: (transaction: any) => void;
   } = $props();
+
+  let isIncluded = $state(includeInBalance);
+
+  function handleCheckboxChange(checked: boolean) {
+    isIncluded = checked;
+    const form = document.querySelector('form');
+    if (form) {
+      // Create a hidden input for the action
+      const actionInput = document.createElement('input');
+      actionInput.type = 'hidden';
+      actionInput.name = 'id';
+      actionInput.value = id;
+
+      const includeInput = document.createElement('input');
+      includeInput.type = 'hidden';
+      includeInput.name = 'includeInBalance';
+      includeInput.value = String(checked);
+
+      form.appendChild(actionInput);
+      form.appendChild(includeInput);
+      form.action = '?/toggleIncludeInBalance';
+      form.requestSubmit();
+
+      // Clean up
+      setTimeout(() => {
+        actionInput.remove();
+        includeInput.remove();
+      }, 100);
+    }
+  }
 </script>
 
 <div
   class="flex flex-col gap-2 border-b border-dashed border-black/5 p-4 duration-75 hover:bg-slate-100"
-  class:opacity-50={!includeInBalance}
+  class:opacity-50={!isIncluded}
 >
   <div class="flex w-full items-center">
     <div class="w-12 flex-shrink-0 pr-1">
-      <input
-        type="checkbox"
-        checked={includeInBalance}
-        onchange={(e) => {
-          const checkbox = e.currentTarget;
-          const form = checkbox.closest('form');
-          if (form) {
-            // Create a hidden input for the action
-            const actionInput = document.createElement('input');
-            actionInput.type = 'hidden';
-            actionInput.name = 'id';
-            actionInput.value = id;
-
-            const includeInput = document.createElement('input');
-            includeInput.type = 'hidden';
-            includeInput.name = 'includeInBalance';
-            includeInput.value = String(checkbox.checked);
-
-            form.appendChild(actionInput);
-            form.appendChild(includeInput);
-            form.action = '?/toggleIncludeInBalance';
-            form.requestSubmit();
-
-            // Clean up
-            setTimeout(() => {
-              actionInput.remove();
-              includeInput.remove();
-            }, 100);
-          }
-        }}
-        class="h-4 w-4 cursor-pointer accent-accent-600"
+      <CircularCheckbox
+        bind:checked={isIncluded}
+        onchange={handleCheckboxChange}
         title="شامل در محاسبه تراز"
       />
     </div>
-    <div class="w-1/5" class:line-through={!includeInBalance}>{party}</div>
-    <div class="w-1/6" class:line-through={!includeInBalance}>{currencyNumberFormatter(amount)}</div>
+    <div class="w-1/5" class:line-through={!isIncluded}>{party}</div>
+    <div class="w-1/6" class:line-through={!isIncluded}>{currencyNumberFormatter(amount)}</div>
     <div class="w-1/6">
       {#if type === 'WITHDRAW'}
         <div class="flex w-fit items-center gap-1 rounded px-1 py-0.5 text-us text-rose-600">
