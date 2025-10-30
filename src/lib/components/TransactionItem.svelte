@@ -9,6 +9,7 @@
     description,
     date,
     balance,
+    includeInBalance,
     onEdit,
   }: {
     id: string;
@@ -18,14 +19,53 @@
     description: string;
     date: Date;
     balance: number;
+    includeInBalance: boolean;
     onEdit?: (transaction: any) => void;
   } = $props();
 </script>
 
-<div class="flex flex-col gap-2 border-b border-dashed border-black/5 p-4 duration-75 hover:bg-slate-100">
+<div
+  class="flex flex-col gap-2 border-b border-dashed border-black/5 p-4 duration-75 hover:bg-slate-100"
+  class:opacity-50={!includeInBalance}
+>
   <div class="flex w-full items-center">
-    <div class="w-1/5">{party}</div>
-    <div class="w-1/6">{currencyNumberFormatter(amount)}</div>
+    <div class="w-12 flex-shrink-0 pr-1">
+      <input
+        type="checkbox"
+        checked={includeInBalance}
+        onchange={(e) => {
+          const checkbox = e.currentTarget;
+          const form = checkbox.closest('form');
+          if (form) {
+            // Create a hidden input for the action
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'id';
+            actionInput.value = id;
+
+            const includeInput = document.createElement('input');
+            includeInput.type = 'hidden';
+            includeInput.name = 'includeInBalance';
+            includeInput.value = String(checkbox.checked);
+
+            form.appendChild(actionInput);
+            form.appendChild(includeInput);
+            form.action = '?/toggleIncludeInBalance';
+            form.requestSubmit();
+
+            // Clean up
+            setTimeout(() => {
+              actionInput.remove();
+              includeInput.remove();
+            }, 100);
+          }
+        }}
+        class="h-4 w-4 cursor-pointer accent-accent-600"
+        title="شامل در محاسبه تراز"
+      />
+    </div>
+    <div class="w-1/5" class:line-through={!includeInBalance}>{party}</div>
+    <div class="w-1/6" class:line-through={!includeInBalance}>{currencyNumberFormatter(amount)}</div>
     <div class="w-1/6">
       {#if type === 'WITHDRAW'}
         <div class="flex w-fit items-center gap-1 rounded px-1 py-0.5 text-us text-rose-600">

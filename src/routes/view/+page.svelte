@@ -40,7 +40,8 @@
       } else if (action.search === '?/applyTransaction') {
         const confirm = await ConfirmDialogStateManager.open({
           type: 'Normal',
-          message: 'آیا مطمعنید که میخواهید این تراکنش را به موجودی پایه اعمال کنید؟ این عمل غیرقابل بازگشت است.',
+          message:
+            'آیا مطمعنید که میخواهید این تراکنش را به موجودی پایه اعمال کنید؟ این عمل غیرقابل بازگشت است.',
         });
         if (!confirm) cancel();
       }
@@ -68,6 +69,8 @@
             message: 'تراکنش با موفقیت به موجودی پایه اعمال شد',
             duration: 5000,
           });
+        } else if (action.includes('toggleIncludeInBalance')) {
+          // Don't show a toast for this action as it's a quick toggle
         }
       } else {
         ToasterStateManager.add({
@@ -303,7 +306,7 @@
     {/if}
   </div>
 </div>
-<div class="flex flex-wrap divide-x divide-x-reverse gap-y-2">
+<div class="flex flex-wrap gap-y-2 divide-x divide-x-reverse">
   <span class="px-2"
     >تعداد کل تراکنش ها : <strong class="text-accent-600">{data.totalNumberOfTransactions}</strong></span
   >
@@ -312,15 +315,16 @@
     ></span
   >
   <span class="px-2">
-    موجودی پایه : <strong class="text-indigo-600">{currencyNumberFormatter(data.baselineBalance)} تومان</strong
+    موجودی پایه : <strong class="text-indigo-600"
+      >{currencyNumberFormatter(data.baselineBalance)} تومان</strong
     ></span
   >
-
 </div>
 <div
   class="flex shrink-[1] grow basis-0 flex-col divide-y divide-dashed divide-black/10 overflow-y-auto overflow-x-hidden sm:min-h-[600px]"
 >
   <div class="flex px-4 py-2 font-bold">
+    <div class="w-12 flex-shrink-0">شامل</div>
     <div class="w-1/5">شخص</div>
     <div class="w-1/6">
       <span>مقدار</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
@@ -507,27 +511,32 @@
       <h3 class="text-base font-bold text-black">ویرایش تراکنش</h3>
       <form method="post" action="?/updateTransaction" use:enhance class="flex flex-col gap-5">
         <input type="hidden" name="id" value={editFormValues.id} />
-        
+
         <div class="relative w-72">
-          <PartySelector name="party" label="شخص" bind:value={editFormValues.party} suggestions={data.parties} />
+          <PartySelector
+            name="party"
+            label="شخص"
+            bind:value={editFormValues.party}
+            suggestions={data.parties}
+          />
         </div>
-        
+
         <div class="relative w-72">
           <Currency name="amount" label="مقدار" bind:value={editFormValues.amount as unknown as string} />
         </div>
-        
+
         <div class="relative w-72">
           <TransactionTypeSelector name="type" label="نوع تراکنش" bind:value={editFormValues.type} />
         </div>
-        
+
         <div class="relative w-72">
           <DateSelector name="date" label="تاریخ تراکنش" bind:value={editFormValues.date} />
         </div>
-        
+
         <div class="relative w-72">
           <TextArea name="description" label="توضیحات تراکنش" bind:value={editFormValues.description} />
         </div>
-        
+
         <div class="flex gap-3">
           <button
             type="submit"
@@ -539,7 +548,7 @@
           <button
             type="button"
             class="flex items-center gap-1.5 rounded-xl bg-gray-600 px-3 py-1.5 text-white duration-75 hover:bg-gray-700"
-            onclick={() => view = 'none'}
+            onclick={() => (view = 'none')}
           >
             <iconify-icon class="text-lg" icon="ic:baseline-cancel"></iconify-icon>
             <span>لغو</span>

@@ -69,7 +69,7 @@
   <div
     class="eng fixed bottom-3 left-0 z-10 hidden w-full text-center text-xs uppercase text-black/80 sm:block"
   >
-    taheri engineering group | ledger v1.0.1
+    taheri engineering group | ledger v1.0.2
   </div>
 
   <div class="relative z-10 flex h-full w-full flex-col items-center gap-2 sm:mt-6">

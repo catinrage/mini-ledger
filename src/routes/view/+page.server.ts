@@ -4,7 +4,7 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 
-import { TransactionType, type Prisma } from '@prisma/client';
+import { type Prisma, TransactionType } from '@prisma/client';
 
 import type { Actions, PageServerLoad } from './$types';
 
@@ -31,8 +31,8 @@ const updateTransactionSchema = z.object({
   amount: z
     .string({
       message: 'مقدار تراکنش باید از نوع عدد باشد',
-    }).transform((val) => parseInt(val.replaceAll(',', ''), 10))
-    ,
+    })
+    .transform((val) => parseInt(val.replaceAll(',', ''), 10)),
   description: z
     .string({
       message: 'توضیحات باید از نوع رشته باشد',
@@ -46,6 +46,15 @@ const updateTransactionSchema = z.object({
 const applyTransactionSchema = z.object({
   id: z.string({
     message: 'این مقدار باید از نوع رشته باشد',
+  }),
+});
+
+const toggleIncludeInBalanceSchema = z.object({
+  id: z.string({
+    message: 'این مقدار باید از نوع رشته باشد',
+  }),
+  includeInBalance: z.boolean({
+    message: 'این مقدار باید از نوع boolean باشد',
   }),
 });
 
@@ -118,7 +127,7 @@ export const load: PageServerLoad = async function ({ url }) {
   let settings = await prisma.settings.findFirst();
   if (!settings) {
     settings = await prisma.settings.create({
-      data: { baselineBalance: 0 }
+      data: { baselineBalance: 0 },
     });
   }
 
@@ -136,6 +145,7 @@ export const load: PageServerLoad = async function ({ url }) {
         description: true,
         party: true,
         balance: true,
+        includeInBalance: true,
       },
     });
     const form = await superValidate(zod(deleteTransactionSchema));
@@ -153,11 +163,12 @@ export const load: PageServerLoad = async function ({ url }) {
       description: string;
       party: string;
       balance: number;
+      includeInBalance: boolean;
     }[];
 
-    // Calculate current total balance (baseline + all non-applied transactions)
+    // Calculate current total balance (baseline + all non-applied transactions that are included in balance)
     const allNonAppliedTransactions = await prisma.transaction.findMany({
-      where: { applied: false },
+      where: { applied: false, includeInBalance: true },
       select: {
         amount: true,
         type: true,
@@ -205,7 +216,7 @@ export const actions = {
       };
     }
   },
-  
+
   updateTransaction: async (event) => {
     const form = await superValidate(event, zod(updateTransactionSchema));
 
@@ -245,34 +256,34 @@ export const actions = {
         form,
       };
     }
-    
+
     try {
       // Get the transaction to apply
       const transaction = await prisma.transaction.findUnique({
         where: { id: form.data.id },
       });
-      
+
       if (!transaction) {
         return {
           status: 404,
           form,
         };
       }
-      
+
       // Get current settings
       let settings = await prisma.settings.findFirst();
       if (!settings) {
         settings = await prisma.settings.create({
-          data: { baselineBalance: 0 }
+          data: { baselineBalance: 0 },
         });
       }
-      
+
       // Calculate the new baseline balance
       const amountChange = transaction.amount * (transaction.type === 'DEPOSIT' ? 1 : -1);
       const newBaselineBalance = settings.baselineBalance + amountChange;
 
-      console.log({newBaselineBalance})
-      
+      console.log({ newBaselineBalance });
+
       // Update settings with new baseline balance and mark transaction as applied
       await Promise.all([
         prisma.settings.update({
@@ -284,10 +295,35 @@ export const actions = {
           data: { applied: true },
         }),
       ]);
-      
+
       return message(form, 'تراکنش با موفقیت به موجودی پایه اعمال شد');
     } catch (error) {
       console.error('Error applying transaction:', error);
+      return {
+        status: 500,
+        form,
+      };
+    }
+  },
+
+  toggleIncludeInBalance: async (event) => {
+    const form = await superValidate(event, zod(toggleIncludeInBalanceSchema));
+    if (!form.valid) {
+      return {
+        status: 400,
+        form,
+      };
+    }
+
+    try {
+      await prisma.transaction.update({
+        where: { id: form.data.id },
+        data: { includeInBalance: form.data.includeInBalance },
+      });
+
+      return message(form, 'وضعیت تراکنش با موفقیت تغییر یافت');
+    } catch (error) {
+      console.error('Error toggling includeInBalance:', error);
       return {
         status: 500,
         form,

@@ -15,10 +15,10 @@ export const prisma = basePrisma.$extends({
           if (!settings) {
             // Create default settings if none exist
             settings = await basePrisma.settings.create({
-              data: { baselineBalance: 0 }
+              data: { baselineBalance: 0 },
             });
           }
-          
+
           // get list of all non-applied transactions before this transaction including this transaction
           const priorTransactions = await basePrisma.transaction.findMany({
             where: {
@@ -26,6 +26,7 @@ export const prisma = basePrisma.$extends({
                 lte: data.date,
               },
               applied: false, // Only include non-applied transactions
+              includeInBalance: true, // Only include transactions that should affect the balance
             },
             select: {
               amount: true,

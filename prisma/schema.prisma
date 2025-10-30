@@ -22,8 +22,9 @@ model Transaction {
   description String?
   date        DateTime
 
-  deleted Boolean @default(false)
-  applied Boolean @default(false)
+  deleted          Boolean @default(false)
+  applied          Boolean @default(false)
+  includeInBalance Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
