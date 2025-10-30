@@ -38,9 +38,22 @@ const updateTransactionSchema = z.object({
       message: 'توضیحات باید از نوع رشته باشد',
     })
     .optional(),
-  date: z.date({
-    message: 'تاریخ تراکنش باید از نوع تاریخ باشد',
-  }),
+  // Due date fields
+  dueDate: z
+    .union([z.date(), z.string().length(0)])
+    .optional()
+    .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+  relativeDueDateTransactionId: z
+    .string()
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
+  relativeDueDateOffsetDays: z
+    .union([z.number(), z.string()])
+    .optional()
+    .transform((val) => {
+      if (val === '' || val === undefined || val === null) return undefined;
+      return typeof val === 'string' ? parseInt(val, 10) : val;
+    }),
 });
 
 const applyTransactionSchema = z.object({
@@ -80,17 +93,18 @@ export const load: PageServerLoad = async function ({ url }) {
         contains: party,
       };
     }
-    if (minDate) {
-      where.date = {
-        gte: new Date(minDate),
-      };
-    }
-    if (maxDate) {
-      where.date = {
-        ...(where.date as any),
-        lte: new Date(maxDate),
-      };
-    }
+    // TODO: Date filtering will need to be done post-query on dueDateResolved
+    // if (minDate) {
+    //   where.date = {
+    //     gte: new Date(minDate),
+    //   };
+    // }
+    // if (maxDate) {
+    //   where.date = {
+    //     ...(where.date as any),
+    //     lte: new Date(maxDate),
+    //   };
+    // }
     if (minAmount) {
       where.amount = {
         gte: minAmount,
@@ -136,21 +150,21 @@ export const load: PageServerLoad = async function ({ url }) {
       where,
       orderBy: [
         {
-          date: 'asc',
-        },
-        {
           createdAt: 'asc',
         },
       ],
       select: {
         id: true,
-        date: true,
         amount: true,
         type: true,
         description: true,
         party: true,
         balance: true,
         includeInBalance: true,
+        dueDate: true,
+        relativeDueDateTransactionId: true,
+        relativeDueDateOffsetDays: true,
+        dueDateResolved: true,
       },
     });
     const form = await superValidate(zod(deleteTransactionSchema));
@@ -158,17 +172,21 @@ export const load: PageServerLoad = async function ({ url }) {
       transactions.map(async (t) => ({
         ...t,
         balance: await t.balance,
+        dueDateResolved: await t.dueDateResolved,
       })),
     );
     const sanitizedTransactions = superjson.parse(superjson.stringify(transactionAwaited)) as {
       id: string;
-      date: Date;
       amount: number;
       type: TransactionType;
       description: string;
       party: string;
       balance: number;
       includeInBalance: boolean;
+      dueDate?: Date | null;
+      relativeDueDateTransactionId?: string | null;
+      relativeDueDateOffsetDays?: number | null;
+      dueDateResolved?: Date | null;
     }[];
 
     // Calculate current total balance (baseline + all non-applied transactions that are included in balance)
@@ -184,6 +202,29 @@ export const load: PageServerLoad = async function ({ url }) {
       settings.baselineBalance,
     );
 
+    // Get all transactions for the selector (only non-applied ones)
+    const allTransactionsForSelector = await prisma.transaction.findMany({
+      where: {
+        applied: false,
+      },
+      select: {
+        id: true,
+        party: true,
+        amount: true,
+        type: true,
+        dueDateResolved: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Await the computed field
+    const allTransactionsAwaited = await Promise.all(
+      allTransactionsForSelector.map(async (t) => ({
+        ...t,
+        dueDateResolved: await t.dueDateResolved,
+      })),
+    );
+
     return {
       form,
       transactions: sanitizedTransactions,
@@ -192,6 +233,9 @@ export const load: PageServerLoad = async function ({ url }) {
       parties: parties.map((p) => p.party),
       baselineBalance: settings.baselineBalance,
       currentTotalBalance,
+      allTransactions: superjson.parse(
+        superjson.stringify(allTransactionsAwaited),
+      ) as typeof allTransactionsAwaited,
     };
   } catch (error) {
     console.error(error);
@@ -231,6 +275,43 @@ export const actions = {
         form,
       };
     }
+
+    // Validate no circular dependency if using relative due date
+    if (form.data.relativeDueDateTransactionId) {
+      const referencedTransaction = await prisma.transaction.findUnique({
+        where: { id: form.data.relativeDueDateTransactionId },
+      });
+
+      if (!referencedTransaction) {
+        return {
+          status: 400,
+          form,
+        };
+      }
+
+      // Check for cycles - the referenced transaction should not depend on this one
+      let currentId: string | null = form.data.relativeDueDateTransactionId;
+      const visited = new Set<string>([form.data.id]);
+
+      while (currentId) {
+        if (visited.has(currentId)) {
+          return {
+            status: 400,
+            form,
+          };
+        }
+        visited.add(currentId);
+
+        const txn = await prisma.transaction.findUnique({
+          where: { id: currentId },
+          select: { relativeDueDateTransactionId: true },
+        });
+
+        if (!txn) break;
+        currentId = txn.relativeDueDateTransactionId;
+      }
+    }
+
     try {
       await prisma.transaction.update({
         where: {
@@ -241,11 +322,14 @@ export const actions = {
           type: form.data.type,
           amount: form.data.amount,
           description: form.data.description || '',
-          date: form.data.date,
+          dueDate: form.data.dueDate,
+          relativeDueDateTransactionId: form.data.relativeDueDateTransactionId,
+          relativeDueDateOffsetDays: form.data.relativeDueDateOffsetDays,
         },
       });
       return message(form, 'تراکنش با موفقیت به‌روزرسانی شد');
     } catch (error) {
+      console.error('Error updating transaction:', error);
       return {
         status: 500,
         form,

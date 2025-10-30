@@ -1,7 +1,7 @@
 <script lang="ts">
   import AddTransactionButton from '$lib/components/AddTransactionButton.svelte';
   import Currency from '$lib/components/inputs/Currency.svelte';
-  import DateSelector from '$lib/components/inputs/DateSelector.svelte';
+  import DueDateModeSelector from '$lib/components/inputs/DueDateModeSelector.svelte';
   import PartySelector from '$lib/components/inputs/PartySelector.svelte';
   import TextArea from '$lib/components/inputs/TextArea.svelte';
   import TransactionTypeSelector from '$lib/components/inputs/TransactionTypeSelector.svelte';
@@ -15,6 +15,12 @@
 
   const ToasterStateManager = getToasterStateManager();
   const ConfirmDialogStateManager = getConfirmDialogStateManager();
+
+  type DueDateMode = 'none' | 'fixed' | 'relative';
+  let dueDateMode = $state<DueDateMode>('none');
+  let dueDateFixed = $state<Date>(new Date());
+  let dueDateRelativeTransactionId = $state<string>('');
+  let dueDateRelativeOffsetDays = $state<number>(0);
 
   const { data }: { data: PageData } = $props();
 
@@ -35,17 +41,22 @@
           message: 'تراکنش با موفقیت ثبت شد.',
           duration: 5000,
         });
-        $form.date = new Date();
+        dueDateMode = 'none';
+        dueDateFixed = new Date();
+        dueDateRelativeTransactionId = '';
+        dueDateRelativeOffsetDays = 0;
         $tainted = {};
       }
     },
     onSubmit({ jsonData }) {
       jsonData({
         party: $form.party,
-        date: $form.date,
         amount: Number(String($form.amount).replaceAll(/,/g, '')),
         type: $form.type,
         description: $form.description,
+        dueDate: dueDateMode === 'fixed' ? dueDateFixed : undefined,
+        relativeDueDateTransactionId: dueDateMode === 'relative' ? dueDateRelativeTransactionId : undefined,
+        relativeDueDateOffsetDays: dueDateMode === 'relative' ? dueDateRelativeOffsetDays : undefined,
       });
     },
     onResult({ result }) {
@@ -63,22 +74,13 @@
 
 <form method="post" use:enhance>
   <div class="flex flex-col gap-4">
-    <div class="flex items-end gap-3 duration-75" class:mb-3={$errors.party || $errors.date}>
-      <div class="relative w-1/2">
+    <div class="flex items-end gap-3 duration-75" class:mb-3={$errors.party}>
+      <div class="relative w-full">
         <PartySelector name="party" bind:value={$form.party} suggestions={data.parties} label="شخص" />
         {#if $errors.party}
           <small
             class="absolute right-0 top-full translate-y-0.5 text-rose-500"
             transition:fade={{ duration: 75 }}>{$errors.party}</small
-          >
-        {/if}
-      </div>
-      <div class="relative w-1/2">
-        <DateSelector name="date" bind:value={$form.date} label="تاریخ تراکنش" />
-        {#if $errors.date}
-          <small
-            class="absolute right-0 top-full translate-y-0.5 text-rose-500"
-            transition:fade={{ duration: 75 }}>{$errors.date}</small
           >
         {/if}
       </div>
@@ -111,6 +113,15 @@
           transition:fade={{ duration: 75 }}>{$errors.description}</small
         >
       {/if}
+    </div>
+    <div class="rounded-lg border border-gray-200 p-4">
+      <DueDateModeSelector
+        bind:mode={dueDateMode}
+        bind:fixedDate={dueDateFixed}
+        bind:relativeTransactionId={dueDateRelativeTransactionId}
+        bind:relativeOffsetDays={dueDateRelativeOffsetDays}
+        transactions={data.transactions}
+      />
     </div>
     <AddTransactionButton />
   </div>

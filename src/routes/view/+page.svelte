@@ -12,6 +12,7 @@
   import { getToasterStateManager } from '$lib/components/globals/toaster/StateManager.svelte';
   import Currency from '$lib/components/inputs/Currency.svelte';
   import DateSelector from '$lib/components/inputs/DateSelector.svelte';
+  import DueDateModeSelector from '$lib/components/inputs/DueDateModeSelector.svelte';
   import PartySelector from '$lib/components/inputs/PartySelector.svelte';
   import TextArea from '$lib/components/inputs/TextArea.svelte';
   import TransactionTypeSelector from '$lib/components/inputs/TransactionTypeSelector.svelte';
@@ -115,8 +116,16 @@
     amount: 0,
     type: TransactionType.DEPOSIT,
     description: '',
-    date: new Date(),
+    dueDate: undefined as Date | undefined,
+    relativeDueDateTransactionId: undefined as string | undefined,
+    relativeDueDateOffsetDays: undefined as number | undefined,
   });
+
+  type DueDateMode = 'none' | 'fixed' | 'relative';
+  let editDueDateMode = $state<DueDateMode>('none');
+  let editDueDateFixed = $state<Date>(new Date());
+  let editDueDateRelativeTransactionId = $state<string>('');
+  let editDueDateRelativeOffsetDays = $state<number>(0);
 
   function addAmountFilter(min: number, max: number) {
     if (min >= max && max !== 0) {
@@ -172,7 +181,19 @@
     editFormValues.amount = transaction.amount.toString();
     editFormValues.type = transaction.type;
     editFormValues.description = transaction.description;
-    editFormValues.date = new Date(transaction.date);
+
+    // Set due date mode and values
+    if (transaction.relativeDueDateTransactionId) {
+      editDueDateMode = 'relative';
+      editDueDateRelativeTransactionId = transaction.relativeDueDateTransactionId;
+      editDueDateRelativeOffsetDays = transaction.relativeDueDateOffsetDays || 0;
+    } else if (transaction.dueDate) {
+      editDueDateMode = 'fixed';
+      editDueDateFixed = new Date(transaction.dueDate);
+    } else {
+      editDueDateMode = 'none';
+    }
+
     view = 'edit-transaction';
   }
 
@@ -330,7 +351,7 @@
       <span>مقدار</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
     </div>
     <div class="w-1/6">نوع</div>
-    <div class="w-1/6">تاریخ</div>
+    <div class="w-1/6">سررسید</div>
     <div class="w-1/6">
       <span>تراز</span><span class="mr-1 text-us font-normal text-black/50"> (تومان)</span>
     </div>
@@ -530,11 +551,18 @@
         </div>
 
         <div class="relative w-72">
-          <DateSelector name="date" label="تاریخ تراکنش" bind:value={editFormValues.date} />
+          <TextArea name="description" label="توضیحات تراکنش" bind:value={editFormValues.description} />
         </div>
 
-        <div class="relative w-72">
-          <TextArea name="description" label="توضیحات تراکنش" bind:value={editFormValues.description} />
+        <div class="rounded-lg border border-gray-200 p-4">
+          <DueDateModeSelector
+            bind:mode={editDueDateMode}
+            bind:fixedDate={editDueDateFixed}
+            bind:relativeTransactionId={editDueDateRelativeTransactionId}
+            bind:relativeOffsetDays={editDueDateRelativeOffsetDays}
+            transactions={data.allTransactions}
+            currentTransactionId={editFormValues.id}
+          />
         </div>
 
         <div class="flex gap-3">

@@ -17,8 +17,9 @@
   }
 </script>
 
-<button
-  type="button"
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div
   onclick={handleClick}
   {title}
   class="relative flex h-5 w-5 items-center justify-center rounded-full border-2 duration-150 hover:scale-110 {className}"
@@ -38,4 +39,4 @@
       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
     </svg>
   {/if}
-</button>
+</div>

@@ -20,7 +20,13 @@ model Transaction {
   type        TransactionType
   amount      Float
   description String?
-  date        DateTime
+
+  // Due date fields - the only date for a transaction
+  dueDate                      DateTime?     @map("date")
+  relativeDueDateTransactionId String?
+  relativeDueDateOffsetDays    Int?
+  relativeDueDateTransaction   Transaction?  @relation("RelativeDueDate", fields: [relativeDueDateTransactionId], references: [id], onDelete: SetNull)
+  dependentTransactions        Transaction[] @relation("RelativeDueDate")
 
   deleted          Boolean @default(false)
   applied          Boolean @default(false)

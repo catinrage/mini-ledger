@@ -1,4 +1,5 @@
 import { prisma } from '$lib/prisma';
+import superjson from 'superjson';
 import { fail, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
@@ -33,9 +34,22 @@ const createTransactionSchema = z.object({
       message: 'توضیحات باید از نوع رشته باشد',
     })
     .optional(),
-  date: z.date({
-    message: 'تاریخ تراکنش باید از نوع تاریخ باشد',
-  }),
+  // Due date fields
+  dueDate: z
+    .union([z.date(), z.string().length(0)])
+    .optional()
+    .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+  relativeDueDateTransactionId: z
+    .string()
+    .optional()
+    .transform((val) => (val === '' ? undefined : val)),
+  relativeDueDateOffsetDays: z
+    .union([z.number(), z.string()])
+    .optional()
+    .transform((val) => {
+      if (val === '' || val === undefined || val === null) return undefined;
+      return typeof val === 'string' ? parseInt(val, 10) : val;
+    }),
 });
 
 export const load: PageServerLoad = async (event) => {
@@ -45,7 +59,9 @@ export const load: PageServerLoad = async (event) => {
       amount: 0,
       type: TransactionType.DEPOSIT,
       description: '',
-      date: new Date(),
+      dueDate: undefined,
+      relativeDueDateTransactionId: undefined,
+      relativeDueDateOffsetDays: undefined,
     },
   });
   const parties = await prisma.transaction.findMany({
@@ -53,23 +69,75 @@ export const load: PageServerLoad = async (event) => {
     select: { party: true },
     orderBy: { createdAt: 'desc' },
   });
-  return { form, parties: parties.map((p) => p.party) };
+  // Get all transactions for the selector (only non-applied ones with dates)
+  const transactions = await prisma.transaction.findMany({
+    where: {
+      applied: false,
+    },
+    select: {
+      id: true,
+      party: true,
+      amount: true,
+      type: true,
+      dueDateResolved: true,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Await the computed field
+  const transactionsAwaited = await Promise.all(
+    transactions.map(async (t) => ({
+      ...t,
+      dueDateResolved: await t.dueDateResolved,
+    })),
+  );
+
+  return {
+    form,
+    parties: parties.map((p) => p.party),
+    transactions: superjson.parse(superjson.stringify(transactionsAwaited)) as typeof transactionsAwaited,
+  };
 };
 
 export const actions = {
   default: async (event) => {
     const form = await superValidate(event, zod(createTransactionSchema));
-    
+
     if (!form.valid) return fail(400, { form });
-    
+
+    // Validate no circular dependency if using relative due date
+    if (form.data.relativeDueDateTransactionId) {
+      // For new transactions, we just need to check that the referenced transaction exists
+      // and doesn't reference back (which will be checked at the database level)
+      const referencedTransaction = await prisma.transaction.findUnique({
+        where: { id: form.data.relativeDueDateTransactionId },
+      });
+
+      if (!referencedTransaction) {
+        return fail(400, {
+          message: 'تراکنش مرجع یافت نشد',
+          form,
+        });
+      }
+    }
+
     try {
       await prisma.transaction.create({
-        data: form.data as any,
+        data: {
+          party: form.data.party,
+          type: form.data.type,
+          amount: form.data.amount,
+          description: form.data.description,
+          dueDate: form.data.dueDate,
+          relativeDueDateTransactionId: form.data.relativeDueDateTransactionId,
+          relativeDueDateOffsetDays: form.data.relativeDueDateOffsetDays,
+        },
       });
       return {
         form,
       };
-    } catch {
+    } catch (error) {
+      console.error('Error creating transaction:', error);
       return fail(500, {
         message: 'خطایی در ذخیره‌سازی رخ داد',
         form,

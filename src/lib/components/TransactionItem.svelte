@@ -8,9 +8,12 @@
     amount,
     type,
     description,
-    date,
     balance,
     includeInBalance,
+    dueDate,
+    relativeDueDateTransactionId,
+    relativeDueDateOffsetDays,
+    dueDateResolved,
     onEdit,
   }: {
     id: string;
@@ -18,9 +21,12 @@
     amount: number;
     type: TransactionType;
     description: string;
-    date: Date;
     balance: number;
     includeInBalance: boolean;
+    dueDate?: Date | null;
+    relativeDueDateTransactionId?: string | null;
+    relativeDueDateOffsetDays?: number | null;
+    dueDateResolved?: Date | null;
     onEdit?: (transaction: any) => void;
   } = $props();
 
@@ -83,12 +89,16 @@
       {/if}
     </div>
     <div class="w-1/6">
-      {new Intl.DateTimeFormat('fa-IR', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-        calendar: 'persian',
-      }).format(date)}
+      {#if dueDateResolved}
+        {new Intl.DateTimeFormat('fa-IR', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+          calendar: 'persian',
+        }).format(dueDateResolved)}
+      {:else}
+        <span class="text-black/30">-</span>
+      {/if}
     </div>
     <div class="rtl w-1/6" class:text-teal-500={balance > 0} class:text-rose-500={balance < 0}>
       <span dir="ltr">{currencyNumberFormatter(balance)}</span>
@@ -107,7 +117,18 @@
         <button
           type="button"
           class="flex items-center text-sm text-black/60 duration-75 hover:text-blue-500"
-          onclick={() => onEdit?.({ id, party, amount, type, description, date, balance })}
+          onclick={() =>
+            onEdit?.({
+              id,
+              party,
+              amount,
+              type,
+              description,
+              dueDate,
+              relativeDueDateTransactionId,
+              relativeDueDateOffsetDays,
+              balance,
+            })}
           title="ویرایش"
         >
           <iconify-icon icon="material-symbols:edit-outline-rounded"></iconify-icon>
@@ -124,9 +145,41 @@
       </div>
     </div>
   </div>
-  {#if description.replaceAll(' ', '') !== ''}
-    <div class="rounded bg-gray-50 p-3 text-us text-black/50">
-      {description}
-    </div>
-  {/if}
+  <div class="flex flex-col gap-2">
+    {#if description.replaceAll(' ', '') !== ''}
+      <div class="rounded bg-gray-50 p-3 text-us text-black/50">
+        {description}
+      </div>
+    {/if}
+
+    {#if dueDateResolved || dueDate || relativeDueDateTransactionId}
+      <div class="flex items-center gap-2 rounded bg-amber-50 p-2 text-us">
+        <iconify-icon class="text-amber-600" icon="material-symbols:schedule"></iconify-icon>
+        <span class="text-amber-800">
+          {#if dueDateResolved}
+            <strong
+              >سررسید
+              {#if relativeDueDateTransactionId}(محاسبه شده){/if}:</strong
+            >
+            {new Intl.DateTimeFormat('fa-IR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              calendar: 'persian',
+            }).format(new Date(dueDateResolved))}
+            {#if relativeDueDateTransactionId}
+              <span class="text-us text-amber-600">
+                ({relativeDueDateOffsetDays || 0} روز {(relativeDueDateOffsetDays || 0) >= 0
+                  ? 'بعد از'
+                  : 'قبل از'} تراکنش مرجع)
+              </span>
+            {/if}
+          {:else}
+            <strong>سررسید:</strong>
+            <span class="text-amber-600">نامشخص (تراکنش مرجع سررسید ندارد)</span>
+          {/if}
+        </span>
+      </div>
+    {/if}
+  </div>
 </div>
