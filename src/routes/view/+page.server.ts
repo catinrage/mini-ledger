@@ -134,9 +134,14 @@ export const load: PageServerLoad = async function ({ url }) {
   try {
     const transactions = await prisma.transaction.findMany({
       where,
-      orderBy: {
-        date: 'asc',
-      },
+      orderBy: [
+        {
+          date: 'asc',
+        },
+        {
+          createdAt: 'asc',
+        },
+      ],
       select: {
         id: true,
         date: true,
