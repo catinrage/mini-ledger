@@ -337,7 +337,7 @@
     <div class="w-1/6">عملیات</div>
   </div>
   <div class="flex flex-col gap-2">
-    <form method="post" use:enhance use:autoAnimate>
+    <form method="post" use:enhance>
       {#each data.transactions as transaction (transaction.id)}
         <TransactionItem {...transaction} onEdit={openEditTransaction} />
       {:else}
