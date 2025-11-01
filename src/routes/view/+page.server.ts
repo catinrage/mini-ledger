@@ -59,7 +59,7 @@ const updateTransactionSchema = z
       .string()
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
-    relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
+    relativeDueDateOffsetDays: z.coerce.number().int().optional(),
   })
   .superRefine((data, ctx) => {
     const hasFixedDate = data.date instanceof Date;

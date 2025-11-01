@@ -22,7 +22,20 @@
   let dueDateRelativeTransactionId = $state<string>('');
   let dueDateRelativeOffsetDays = $state<number>(0);
 
-  const { data }: { data: PageData } = $props();
+  const { data }: { data: PageData & { initialDueDateMode?: DueDateMode } } = $props();
+
+  const defaultDate = data.form.data?.date;
+  if (defaultDate) {
+    dueDateFixed = defaultDate instanceof Date ? defaultDate : new Date(defaultDate);
+  }
+
+  if (data.initialDueDateMode === 'relative' && data.form.data?.relativeDueDateTransactionId) {
+    dueDateMode = 'relative';
+    dueDateRelativeTransactionId = data.form.data.relativeDueDateTransactionId;
+    dueDateRelativeOffsetDays = data.form.data.relativeDueDateOffsetDays ?? 0;
+  } else if (defaultDate) {
+    dueDateMode = 'fixed';
+  }
 
   const { enhance, form, errors, tainted } = superForm(data.form, {
     dataType: 'json',

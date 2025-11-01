@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
   import CircularCheckbox from '$lib/components/inputs/CircularCheckbox.svelte';
   import { currencyNumberFormatter } from '$lib/helpers';
   import type { TransactionType } from '@prisma/client';
@@ -98,6 +99,14 @@
       highlightTimeout = undefined;
     }, 2000);
   }
+
+  function openRelativeTransactionCreator() {
+    const params = new URLSearchParams();
+    params.set('relativeDueDateTransactionId', id);
+    const offset = relativeDueDateOffsetDays ?? 0;
+    params.set('relativeDueDateOffsetDays', offset.toString());
+    goto(`/add?${params.toString()}`);
+  }
 </script>
 
 <div
@@ -153,6 +162,14 @@
           title="اعمال به موجودی پایه"
         >
           <iconify-icon icon="material-symbols:check-circle-outline-rounded"></iconify-icon>
+        </button>
+        <button
+          type="button"
+          class="flex items-center text-sm text-black/60 duration-75 hover:text-amber-600"
+          onclick={openRelativeTransactionCreator}
+          title="تراکنش جدید با سررسید نسبی"
+        >
+          <iconify-icon icon="material-symbols:add-link-rounded"></iconify-icon>
         </button>
         <button
           type="button"

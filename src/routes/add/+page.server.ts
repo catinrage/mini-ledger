@@ -44,7 +44,7 @@ const createTransactionSchema = z
       .string()
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
-    relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
+    relativeDueDateOffsetDays: z.coerce.number().int().optional(),
   })
   .superRefine((data, ctx) => {
     const hasFixedDate = data.date instanceof Date;
@@ -68,15 +68,25 @@ const createTransactionSchema = z
   });
 
 export const load: PageServerLoad = async (event) => {
+  const { url } = event;
+  const relativeTransactionIdParam = url.searchParams.get('relativeDueDateTransactionId') ?? undefined;
+  const relativeOffsetParam = url.searchParams.get('relativeDueDateOffsetDays');
+  const parsedRelativeOffset =
+    relativeOffsetParam !== null && relativeOffsetParam !== '' ? Number(relativeOffsetParam) : undefined;
+  const relativeOffset =
+    parsedRelativeOffset !== undefined && Number.isFinite(parsedRelativeOffset)
+      ? parsedRelativeOffset
+      : undefined;
+
   const form = await superValidate(zod(createTransactionSchema), {
     defaults: {
       party: '',
       amount: 0,
       type: TransactionType.DEPOSIT,
       description: '',
-      date: new Date(),
-      relativeDueDateTransactionId: undefined,
-      relativeDueDateOffsetDays: undefined,
+      date: relativeTransactionIdParam ? undefined : new Date(),
+      relativeDueDateTransactionId: relativeTransactionIdParam,
+      relativeDueDateOffsetDays: relativeTransactionIdParam ? (relativeOffset ?? 0) : undefined,
     },
   });
   const parties = await prisma.transaction.findMany({
@@ -111,6 +121,7 @@ export const load: PageServerLoad = async (event) => {
     form,
     parties: parties.map((p) => p.party),
     transactions: superjson.parse(superjson.stringify(transactionsAwaited)) as typeof transactionsAwaited,
+    initialDueDateMode: relativeTransactionIdParam ? 'relative' : 'fixed',
   };
 };
 
