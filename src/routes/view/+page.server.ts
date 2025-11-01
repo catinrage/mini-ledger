@@ -14,52 +14,73 @@ const deleteTransactionSchema = z.object({
   }),
 });
 
-const updateTransactionSchema = z.object({
-  id: z.string({
-    message: 'این مقدار باید از نوع رشته باشد',
-  }),
-  party: z
-    .string({
-      message: 'نام شخص باید از نوع رشته باشد',
-    })
-    .min(1, {
-      message: 'نام شخص نباید خالی باشد',
+const updateTransactionSchema = z
+  .object({
+    id: z.string({
+      message: 'این مقدار باید از نوع رشته باشد',
     }),
-  type: z.nativeEnum(TransactionType, {
-    message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
-  }),
-  amount: z.preprocess(
-    (val) => {
-      if (typeof val === 'string') {
-        const cleaned = val.replaceAll(',', '').trim();
-        return cleaned === '' ? undefined : Number(cleaned);
-      }
-      return val;
-    },
-    z
-      .number({
-        message: 'مقدار تراکنش باید از نوع عدد باشد',
+    party: z
+      .string({
+        message: 'نام شخص باید از نوع رشته باشد',
       })
-      .int({
-        message: 'مقدار تراکنش باید از نوع عدد صحیح باشد',
+      .min(1, {
+        message: 'نام شخص نباید خالی باشد',
       }),
-  ),
-  description: z
-    .string({
-      message: 'توضیحات باید از نوع رشته باشد',
-    })
-    .optional(),
-  // Due date fields
-  date: z
-    .union([z.date(), z.string().length(0)])
-    .optional()
-    .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
-  relativeDueDateTransactionId: z
-    .string()
-    .optional()
-    .transform((val) => (val === '' ? undefined : val)),
-  relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
-});
+    type: z.nativeEnum(TransactionType, {
+      message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
+    }),
+    amount: z.preprocess(
+      (val) => {
+        if (typeof val === 'string') {
+          const cleaned = val.replaceAll(',', '').trim();
+          return cleaned === '' ? undefined : Number(cleaned);
+        }
+        return val;
+      },
+      z
+        .number({
+          message: 'مقدار تراکنش باید از نوع عدد باشد',
+        })
+        .int({
+          message: 'مقدار تراکنش باید از نوع عدد صحیح باشد',
+        }),
+    ),
+    description: z
+      .string({
+        message: 'توضیحات باید از نوع رشته باشد',
+      })
+      .optional(),
+    // Due date fields
+    date: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+    relativeDueDateTransactionId: z
+      .string()
+      .optional()
+      .transform((val) => (val === '' ? undefined : val)),
+    relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasFixedDate = data.date instanceof Date;
+    const hasRelative = Boolean(data.relativeDueDateTransactionId);
+
+    if (!hasFixedDate && !hasRelative) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['date'],
+        message: 'وارد کردن سررسید اجباری است (ثابت یا نسبی).',
+      });
+    }
+
+    if (hasRelative && data.relativeDueDateOffsetDays === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['relativeDueDateOffsetDays'],
+        message: 'در حالت سررسید نسبی، تعداد روز فاصله الزامی است.',
+      });
+    }
+  });
 
 const applyTransactionSchema = z.object({
   id: z.string({

@@ -17,7 +17,7 @@
   const ConfirmDialogStateManager = getConfirmDialogStateManager();
 
   type DueDateMode = 'none' | 'fixed' | 'relative';
-  let dueDateMode = $state<DueDateMode>('none');
+  let dueDateMode = $state<DueDateMode>('fixed');
   let dueDateFixed = $state<Date>(new Date());
   let dueDateRelativeTransactionId = $state<string>('');
   let dueDateRelativeOffsetDays = $state<number>(0);
@@ -41,7 +41,7 @@
           message: 'تراکنش با موفقیت ثبت شد.',
           duration: 5000,
         });
-        dueDateMode = 'none';
+        dueDateMode = 'fixed';
         dueDateFixed = new Date();
         dueDateRelativeTransactionId = '';
         dueDateRelativeOffsetDays = 0;
@@ -114,7 +114,7 @@
         >
       {/if}
     </div>
-    <div class="rounded-lg border border-gray-200 p-4">
+    <div class="rounded-lg bg-gray-50 p-4">
       <DueDateModeSelector
         bind:mode={dueDateMode}
         bind:fixedDate={dueDateFixed}

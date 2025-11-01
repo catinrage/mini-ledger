@@ -32,7 +32,7 @@
     delayMs: 300,
     clearOnSubmit: 'errors',
     invalidateAll: true,
-    async onSubmit({ cancel, action, jsonData, submitter }) {
+    async onSubmit({ cancel, action, jsonData, submitter, formData }) {
       if (action.search === '?/deleteTransaction') {
         const confirm = await ConfirmDialogStateManager.open({
           type: 'Danger',
@@ -64,6 +64,14 @@
           return;
         }
         jsonData({ id: submitterButton.value });
+      } else if (action.search === '?/toggleIncludeInBalance') {
+        const id = formData?.get('id');
+        const include = formData?.get('includeInBalance');
+        if (typeof id !== 'string' || typeof include !== 'string') {
+          cancel();
+          return;
+        }
+        jsonData({ id, includeInBalance: include === 'true' });
       } else if (action.search === '?/updateTransaction') {
         // Send JSON data for update transaction
         const amountStr = String(editFormValues.amount || '0').replaceAll(/,/g, '');
@@ -571,23 +579,23 @@
       <form method="post" action="?/updateTransaction" use:enhance class="flex flex-col gap-5">
         <input type="hidden" name="id" value={editFormValues.id} />
 
-        <div class="relative w-72">
+        <div class="relative">
           <PartySelector label="شخص" bind:value={editFormValues.party} suggestions={data.parties} />
         </div>
 
-        <div class="relative w-72">
+        <div class="relative">
           <Currency label="مقدار" bind:value={editFormValues.amount as unknown as string} />
         </div>
 
-        <div class="relative w-72">
+        <div class="relative">
           <TransactionTypeSelector label="نوع تراکنش" bind:value={editFormValues.type} />
         </div>
 
-        <div class="relative w-72">
+        <div class="relative">
           <TextArea label="توضیحات تراکنش" bind:value={editFormValues.description} />
         </div>
 
-        <div class="rounded-lg border border-gray-200 p-4">
+        <div class="rounded-lg bg-gray-50 p-4">
           <DueDateModeSelector
             bind:mode={editDueDateMode}
             bind:fixedDate={editDueDateFixed}

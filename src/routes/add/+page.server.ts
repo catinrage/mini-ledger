@@ -8,43 +8,64 @@ import { TransactionType } from '@prisma/client';
 
 import type { Actions, PageServerLoad } from './$types';
 
-const createTransactionSchema = z.object({
-  party: z
-    .string({
-      message: 'نام شخص باید از نوع رشته باشد',
-    })
-    .min(1, {
-      message: 'نام شخص نباید خالی باشد',
+const createTransactionSchema = z
+  .object({
+    party: z
+      .string({
+        message: 'نام شخص باید از نوع رشته باشد',
+      })
+      .min(1, {
+        message: 'نام شخص نباید خالی باشد',
+      }),
+    type: z.nativeEnum(TransactionType, {
+      message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
     }),
-  type: z.nativeEnum(TransactionType, {
-    message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
-  }),
-  amount: z
-    .number({
-      message: 'مقدار تراکنش باید از نوع عدد باشد',
-    })
-    .min(1, {
-      message: 'مقدار تراکنش نباید کمتر از 1 باشد',
-    })
-    .int({
-      message: 'مقدار تراکنش باید از نوع عدد صحیح باشد',
-    }),
-  description: z
-    .string({
-      message: 'توضیحات باید از نوع رشته باشد',
-    })
-    .optional(),
-  // Due date fields
-  date: z
-    .union([z.date(), z.string().length(0)])
-    .optional()
-    .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
-  relativeDueDateTransactionId: z
-    .string()
-    .optional()
-    .transform((val) => (val === '' ? undefined : val)),
-  relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
-});
+    amount: z
+      .number({
+        message: 'مقدار تراکنش باید از نوع عدد باشد',
+      })
+      .min(1, {
+        message: 'مقدار تراکنش نباید کمتر از 1 باشد',
+      })
+      .int({
+        message: 'مقدار تراکنش باید از نوع عدد صحیح باشد',
+      }),
+    description: z
+      .string({
+        message: 'توضیحات باید از نوع رشته باشد',
+      })
+      .optional(),
+    // Due date fields
+    date: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+    relativeDueDateTransactionId: z
+      .string()
+      .optional()
+      .transform((val) => (val === '' ? undefined : val)),
+    relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const hasFixedDate = data.date instanceof Date;
+    const hasRelative = Boolean(data.relativeDueDateTransactionId);
+
+    if (!hasFixedDate && !hasRelative) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['date'],
+        message: 'وارد کردن سررسید اجباری است (ثابت یا نسبی).',
+      });
+    }
+
+    if (hasRelative && data.relativeDueDateOffsetDays === undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['relativeDueDateOffsetDays'],
+        message: 'در حالت سررسید نسبی، تعداد روز فاصله الزامی است.',
+      });
+    }
+  });
 
 export const load: PageServerLoad = async (event) => {
   const form = await superValidate(zod(createTransactionSchema), {
@@ -53,7 +74,7 @@ export const load: PageServerLoad = async (event) => {
       amount: 0,
       type: TransactionType.DEPOSIT,
       description: '',
-      date: undefined,
+      date: new Date(),
       relativeDueDateTransactionId: undefined,
       relativeDueDateOffsetDays: undefined,
     },

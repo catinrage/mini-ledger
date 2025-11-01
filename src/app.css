@@ -74,7 +74,7 @@
   padding: 1rem;
 }
 .datepicker-plot-area {
-  translate: (0, -100%);
+  translate: 0 -100%;
 }
 .datepicker-plot-area .datepicker-time-view {
   border-top: unset !important;
