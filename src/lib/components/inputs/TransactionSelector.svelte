@@ -36,7 +36,7 @@
     transactions
       .filter((t) => t.id !== currentTransactionId)
       .slice()
-      .sort((a, b) => resolveDueTime(a.dueDateResolved) - resolveDueTime(b.dueDateResolved))
+      .sort((a, b) => resolveDueTime(a.dueDateResolved) - resolveDueTime(b.dueDateResolved)),
   );
 </script>
 
