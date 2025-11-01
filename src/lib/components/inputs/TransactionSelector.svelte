@@ -24,7 +24,20 @@
   } = $props();
 
   // Filter out the current transaction to prevent self-reference
-  const availableTransactions = $derived(transactions.filter((t) => t.id !== currentTransactionId));
+  const resolveDueTime = (value: Date | null | undefined) => {
+    if (!value) return Number.POSITIVE_INFINITY;
+
+    const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+    return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+  };
+
+  // Oldest due dates first; undated entries sink to the end.
+  const availableTransactions = $derived(
+    transactions
+      .filter((t) => t.id !== currentTransactionId)
+      .slice()
+      .sort((a, b) => resolveDueTime(a.dueDateResolved) - resolveDueTime(b.dueDateResolved))
+  );
 </script>
 
 <div class="flex flex-col gap-1 text-xs {className}">
