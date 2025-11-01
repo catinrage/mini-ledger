@@ -28,23 +28,61 @@
   const { data }: { data: PageData } = $props();
 
   const { enhance } = superForm(data.form, {
+    dataType: 'json',
     delayMs: 300,
     clearOnSubmit: 'errors',
     invalidateAll: true,
-    async onSubmit({ cancel, action }) {
+    async onSubmit({ cancel, action, jsonData, submitter }) {
       if (action.search === '?/deleteTransaction') {
         const confirm = await ConfirmDialogStateManager.open({
           type: 'Danger',
           message: 'آیا مطمعنید که میخواهید این تراکنش را حذف کنید ؟',
         });
-        if (!confirm) cancel();
+        if (!confirm) {
+          cancel();
+          return;
+        }
+        const submitterButton = submitter instanceof HTMLButtonElement ? submitter : undefined;
+        if (!submitterButton) {
+          cancel();
+          return;
+        }
+        jsonData({ id: submitterButton.value });
       } else if (action.search === '?/applyTransaction') {
         const confirm = await ConfirmDialogStateManager.open({
           type: 'Normal',
           message:
             'آیا مطمعنید که میخواهید این تراکنش را به موجودی پایه اعمال کنید؟ این عمل غیرقابل بازگشت است.',
         });
-        if (!confirm) cancel();
+        if (!confirm) {
+          cancel();
+          return;
+        }
+        const submitterButton = submitter instanceof HTMLButtonElement ? submitter : undefined;
+        if (!submitterButton) {
+          cancel();
+          return;
+        }
+        jsonData({ id: submitterButton.value });
+      } else if (action.search === '?/updateTransaction') {
+        // Send JSON data for update transaction
+        const amountStr = String(editFormValues.amount || '0').replaceAll(/,/g, '');
+        const amountNum = Number(amountStr) || 0;
+
+        console.log('Sending update with amount:', amountNum, 'from string:', editFormValues.amount);
+
+        jsonData({
+          id: editFormValues.id,
+          party: editFormValues.party,
+          amount: amountNum,
+          type: editFormValues.type,
+          description: editFormValues.description,
+          date: editDueDateMode === 'fixed' ? editDueDateFixed : undefined,
+          relativeDueDateTransactionId:
+            editDueDateMode === 'relative' ? editDueDateRelativeTransactionId : undefined,
+          relativeDueDateOffsetDays:
+            editDueDateMode === 'relative' ? editDueDateRelativeOffsetDays : undefined,
+        });
       }
     },
     onResult(event) {
@@ -187,9 +225,9 @@
       editDueDateMode = 'relative';
       editDueDateRelativeTransactionId = transaction.relativeDueDateTransactionId;
       editDueDateRelativeOffsetDays = transaction.relativeDueDateOffsetDays || 0;
-    } else if (transaction.dueDate) {
+    } else if (transaction.date) {
       editDueDateMode = 'fixed';
-      editDueDateFixed = new Date(transaction.dueDate);
+      editDueDateFixed = new Date(transaction.date);
     } else {
       editDueDateMode = 'none';
     }
@@ -534,24 +572,19 @@
         <input type="hidden" name="id" value={editFormValues.id} />
 
         <div class="relative w-72">
-          <PartySelector
-            name="party"
-            label="شخص"
-            bind:value={editFormValues.party}
-            suggestions={data.parties}
-          />
+          <PartySelector label="شخص" bind:value={editFormValues.party} suggestions={data.parties} />
         </div>
 
         <div class="relative w-72">
-          <Currency name="amount" label="مقدار" bind:value={editFormValues.amount as unknown as string} />
+          <Currency label="مقدار" bind:value={editFormValues.amount as unknown as string} />
         </div>
 
         <div class="relative w-72">
-          <TransactionTypeSelector name="type" label="نوع تراکنش" bind:value={editFormValues.type} />
+          <TransactionTypeSelector label="نوع تراکنش" bind:value={editFormValues.type} />
         </div>
 
         <div class="relative w-72">
-          <TextArea name="description" label="توضیحات تراکنش" bind:value={editFormValues.description} />
+          <TextArea label="توضیحات تراکنش" bind:value={editFormValues.description} />
         </div>
 
         <div class="rounded-lg border border-gray-200 p-4">
@@ -562,6 +595,7 @@
             bind:relativeOffsetDays={editDueDateRelativeOffsetDays}
             transactions={data.allTransactions}
             currentTransactionId={editFormValues.id}
+            useNames={false}
           />
         </div>
 

@@ -54,7 +54,7 @@
         amount: Number(String($form.amount).replaceAll(/,/g, '')),
         type: $form.type,
         description: $form.description,
-        dueDate: dueDateMode === 'fixed' ? dueDateFixed : undefined,
+        date: dueDateMode === 'fixed' ? dueDateFixed : undefined,
         relativeDueDateTransactionId: dueDateMode === 'relative' ? dueDateRelativeTransactionId : undefined,
         relativeDueDateOffsetDays: dueDateMode === 'relative' ? dueDateRelativeOffsetDays : undefined,
       });

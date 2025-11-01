@@ -10,7 +10,7 @@
     description,
     balance,
     includeInBalance,
-    dueDate,
+    date,
     relativeDueDateTransactionId,
     relativeDueDateOffsetDays,
     dueDateResolved,
@@ -23,7 +23,7 @@
     description: string;
     balance: number;
     includeInBalance: boolean;
-    dueDate?: Date | null;
+    date?: Date | null;
     relativeDueDateTransactionId?: string | null;
     relativeDueDateOffsetDays?: number | null;
     dueDateResolved?: Date | null;
@@ -124,7 +124,7 @@
               amount,
               type,
               description,
-              dueDate,
+              date,
               relativeDueDateTransactionId,
               relativeDueDateOffsetDays,
               balance,
@@ -152,7 +152,7 @@
       </div>
     {/if}
 
-    {#if dueDateResolved || dueDate || relativeDueDateTransactionId}
+    {#if dueDateResolved || date || relativeDueDateTransactionId}
       <div class="flex items-center gap-2 rounded bg-amber-50 p-2 text-us">
         <iconify-icon class="text-amber-600" icon="material-symbols:schedule"></iconify-icon>
         <span class="text-amber-800">

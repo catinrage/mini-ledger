@@ -24,7 +24,7 @@ export const prisma = basePrisma.$extends({
             where: { id: data.id },
             select: {
               id: true,
-              dueDate: true,
+              date: true,
               relativeDueDateTransactionId: true,
               relativeDueDateOffsetDays: true,
             },
@@ -38,8 +38,8 @@ export const prisma = basePrisma.$extends({
             if (visited.has(txn.id)) return null;
             visited.add(txn.id);
 
-            if (txn.dueDate && !txn.relativeDueDateTransactionId) {
-              return txn.dueDate;
+            if (txn.date && !txn.relativeDueDateTransactionId) {
+              return txn.date;
             }
 
             if (txn.relativeDueDateTransactionId && txn.relativeDueDateOffsetDays !== null) {
@@ -47,7 +47,7 @@ export const prisma = basePrisma.$extends({
                 where: { id: txn.relativeDueDateTransactionId },
                 select: {
                   id: true,
-                  dueDate: true,
+                  date: true,
                   relativeDueDateTransactionId: true,
                   relativeDueDateOffsetDays: true,
                 },
@@ -78,7 +78,7 @@ export const prisma = basePrisma.$extends({
               id: true,
               amount: true,
               type: true,
-              dueDate: true,
+              date: true,
               relativeDueDateTransactionId: true,
               relativeDueDateOffsetDays: true,
             },
@@ -98,7 +98,7 @@ export const prisma = basePrisma.$extends({
       dueDateResolved: {
         needs: {
           id: true,
-          dueDate: true,
+          date: true,
           relativeDueDateTransactionId: true,
           relativeDueDateOffsetDays: true,
         },
@@ -108,7 +108,7 @@ export const prisma = basePrisma.$extends({
 
           async function calculateRecursive(transactionData: {
             id: string;
-            dueDate: Date | null;
+            date: Date | null;
             relativeDueDateTransactionId: string | null;
             relativeDueDateOffsetDays: number | null;
           }): Promise<Date | null> {
@@ -120,8 +120,8 @@ export const prisma = basePrisma.$extends({
             visited.add(transactionData.id);
 
             // If it has a fixed due date and no relative reference, return it
-            if (transactionData.dueDate && !transactionData.relativeDueDateTransactionId) {
-              return transactionData.dueDate;
+            if (transactionData.date && !transactionData.relativeDueDateTransactionId) {
+              return transactionData.date;
             }
 
             // If it has a relative due date reference
@@ -134,7 +134,7 @@ export const prisma = basePrisma.$extends({
                 where: { id: transactionData.relativeDueDateTransactionId },
                 select: {
                   id: true,
-                  dueDate: true,
+                  date: true,
                   relativeDueDateTransactionId: true,
                   relativeDueDateOffsetDays: true,
                 },

@@ -35,7 +35,7 @@ const createTransactionSchema = z.object({
     })
     .optional(),
   // Due date fields
-  dueDate: z
+  date: z
     .union([z.date(), z.string().length(0)])
     .optional()
     .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
@@ -43,13 +43,7 @@ const createTransactionSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val === '' ? undefined : val)),
-  relativeDueDateOffsetDays: z
-    .union([z.number(), z.string()])
-    .optional()
-    .transform((val) => {
-      if (val === '' || val === undefined || val === null) return undefined;
-      return typeof val === 'string' ? parseInt(val, 10) : val;
-    }),
+  relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
 });
 
 export const load: PageServerLoad = async (event) => {
@@ -59,7 +53,7 @@ export const load: PageServerLoad = async (event) => {
       amount: 0,
       type: TransactionType.DEPOSIT,
       description: '',
-      dueDate: undefined,
+      date: undefined,
       relativeDueDateTransactionId: undefined,
       relativeDueDateOffsetDays: undefined,
     },
@@ -128,7 +122,7 @@ export const actions = {
           type: form.data.type,
           amount: form.data.amount,
           description: form.data.description,
-          dueDate: form.data.dueDate,
+          date: form.data.date,
           relativeDueDateTransactionId: form.data.relativeDueDateTransactionId,
           relativeDueDateOffsetDays: form.data.relativeDueDateOffsetDays,
         },

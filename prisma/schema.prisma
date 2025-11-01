@@ -22,7 +22,7 @@ model Transaction {
   description String?
 
   // Due date fields - the only date for a transaction
-  dueDate                      DateTime?     @map("date")
+  date                         DateTime?
   relativeDueDateTransactionId String?
   relativeDueDateOffsetDays    Int?
   relativeDueDateTransaction   Transaction?  @relation("RelativeDueDate", fields: [relativeDueDateTransactionId], references: [id], onDelete: SetNull)

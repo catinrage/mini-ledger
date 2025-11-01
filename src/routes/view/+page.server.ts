@@ -28,18 +28,29 @@ const updateTransactionSchema = z.object({
   type: z.nativeEnum(TransactionType, {
     message: 'نوع تراکنش باید یکی از مقادیر معتبر باشد',
   }),
-  amount: z
-    .string({
-      message: 'مقدار تراکنش باید از نوع عدد باشد',
-    })
-    .transform((val) => parseInt(val.replaceAll(',', ''), 10)),
+  amount: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        const cleaned = val.replaceAll(',', '').trim();
+        return cleaned === '' ? undefined : Number(cleaned);
+      }
+      return val;
+    },
+    z
+      .number({
+        message: 'مقدار تراکنش باید از نوع عدد باشد',
+      })
+      .int({
+        message: 'مقدار تراکنش باید از نوع عدد صحیح باشد',
+      }),
+  ),
   description: z
     .string({
       message: 'توضیحات باید از نوع رشته باشد',
     })
     .optional(),
   // Due date fields
-  dueDate: z
+  date: z
     .union([z.date(), z.string().length(0)])
     .optional()
     .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
@@ -47,13 +58,7 @@ const updateTransactionSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val === '' ? undefined : val)),
-  relativeDueDateOffsetDays: z
-    .union([z.number(), z.string()])
-    .optional()
-    .transform((val) => {
-      if (val === '' || val === undefined || val === null) return undefined;
-      return typeof val === 'string' ? parseInt(val, 10) : val;
-    }),
+  relativeDueDateOffsetDays: z.coerce.number().positive().int().optional(),
 });
 
 const applyTransactionSchema = z.object({
@@ -161,7 +166,7 @@ export const load: PageServerLoad = async function ({ url }) {
         party: true,
         balance: true,
         includeInBalance: true,
-        dueDate: true,
+        date: true,
         relativeDueDateTransactionId: true,
         relativeDueDateOffsetDays: true,
         dueDateResolved: true,
@@ -175,6 +180,14 @@ export const load: PageServerLoad = async function ({ url }) {
         dueDateResolved: await t.dueDateResolved,
       })),
     );
+    transactionAwaited.sort((a, b) => {
+      const aTime = a.dueDateResolved?.getTime();
+      const bTime = b.dueDateResolved?.getTime();
+      if (aTime === undefined && bTime === undefined) return 0;
+      if (aTime === undefined) return 1;
+      if (bTime === undefined) return -1;
+      return aTime - bTime;
+    });
     const sanitizedTransactions = superjson.parse(superjson.stringify(transactionAwaited)) as {
       id: string;
       amount: number;
@@ -183,7 +196,7 @@ export const load: PageServerLoad = async function ({ url }) {
       party: string;
       balance: number;
       includeInBalance: boolean;
-      dueDate?: Date | null;
+      date?: Date | null;
       relativeDueDateTransactionId?: string | null;
       relativeDueDateOffsetDays?: number | null;
       dueDateResolved?: Date | null;
@@ -252,11 +265,42 @@ export const actions = {
       };
     }
     try {
-      await prisma.transaction.delete({
-        where: {
-          id: form.data.id,
+      // Capture dependent transactions before deleting so we can preserve their resolved due dates.
+      const dependents = await prisma.transaction.findMany({
+        where: { relativeDueDateTransactionId: form.data.id },
+        select: {
+          id: true,
+          dueDateResolved: true,
         },
       });
+
+      const dependentUpdates = await Promise.all(
+        dependents.map(async (txn) => ({
+          id: txn.id,
+          resolvedDate: await txn.dueDateResolved,
+        })),
+      );
+
+      const operations = dependentUpdates.map(({ id, resolvedDate }) =>
+        prisma.transaction.update({
+          where: { id },
+          data: {
+            date: resolvedDate ?? null,
+            relativeDueDateTransactionId: null,
+            relativeDueDateOffsetDays: null,
+          },
+        }),
+      );
+
+      operations.push(
+        prisma.transaction.delete({
+          where: {
+            id: form.data.id,
+          },
+        }),
+      );
+
+      await prisma.$transaction(operations);
       return message(form, 'تراکنش با موفقیت حذف شد');
     } catch (error) {
       return {
@@ -313,7 +357,7 @@ export const actions = {
     }
 
     try {
-      await prisma.transaction.update({
+      const result = await prisma.transaction.update({
         where: {
           id: form.data.id,
         },
@@ -322,7 +366,7 @@ export const actions = {
           type: form.data.type,
           amount: form.data.amount,
           description: form.data.description || '',
-          dueDate: form.data.dueDate,
+          date: form.data.date,
           relativeDueDateTransactionId: form.data.relativeDueDateTransactionId,
           relativeDueDateOffsetDays: form.data.relativeDueDateOffsetDays,
         },
@@ -370,8 +414,6 @@ export const actions = {
       // Calculate the new baseline balance
       const amountChange = transaction.amount * (transaction.type === 'DEPOSIT' ? 1 : -1);
       const newBaselineBalance = settings.baselineBalance + amountChange;
-
-      console.log({ newBaselineBalance });
 
       // Update settings with new baseline balance and mark transaction as applied
       await Promise.all([
