@@ -32,9 +32,18 @@ export const prisma = basePrisma.$extends({
 
           if (!transaction) return settings.baselineBalance;
 
-          // Calculate effective due date
-          const visited = new Set<string>();
-          async function calculateDueDate(txn: typeof transaction): Promise<Date | null> {
+          type TransactionForDueDate = {
+            id: string;
+            date: Date | null;
+            relativeDueDateTransactionId: string | null;
+            relativeDueDateOffsetDays: number | null;
+          };
+
+          // Calculate effective due date for any transaction, starting with a fresh visited set
+          async function calculateDueDate(
+            txn: TransactionForDueDate,
+            visited = new Set<string>()
+          ): Promise<Date | null> {
             if (visited.has(txn.id)) return null;
             visited.add(txn.id);
 
@@ -54,7 +63,7 @@ export const prisma = basePrisma.$extends({
               });
               if (!ref) return null;
 
-              const refDate = await calculateDueDate(ref);
+              const refDate = await calculateDueDate(ref, visited);
               if (!refDate) return null;
 
               const result = new Date(refDate);
