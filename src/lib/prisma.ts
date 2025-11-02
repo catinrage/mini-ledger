@@ -42,7 +42,7 @@ export const prisma = basePrisma.$extends({
           // Calculate effective due date for any transaction, starting with a fresh visited set
           async function calculateDueDate(
             txn: TransactionForDueDate,
-            visited = new Set<string>()
+            visited = new Set<string>(),
           ): Promise<Date | null> {
             if (visited.has(txn.id)) return null;
             visited.add(txn.id);
