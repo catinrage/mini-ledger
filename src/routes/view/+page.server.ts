@@ -387,9 +387,10 @@ export const actions = {
           type: form.data.type,
           amount: form.data.amount,
           description: form.data.description || '',
+          // If switching to static date, clear relative date fields
           date: form.data.date,
-          relativeDueDateTransactionId: form.data.relativeDueDateTransactionId,
-          relativeDueDateOffsetDays: form.data.relativeDueDateOffsetDays,
+          relativeDueDateTransactionId: form.data.date ? null : form.data.relativeDueDateTransactionId,
+          relativeDueDateOffsetDays: form.data.date ? null : form.data.relativeDueDateOffsetDays,
         },
       });
       return message(form, 'تراکنش با موفقیت به‌روزرسانی شد');
