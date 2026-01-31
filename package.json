@@ -11,7 +11,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "lint": "prettier --plugin-search-dir . --check . && eslint .",
-    "format": "prettier --plugin-search-dir . --write ."
+    "format": "prettier --plugin-search-dir . --write .",
+    "db:seed": "node -r ts-node/register prisma/seed.ts"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
@@ -57,7 +58,11 @@
     "simplebar": "^6.2.7",
     "superjson": "^2.2.1",
     "svelte-dnd-action": "^0.9.49",
+    "tsx": "^4.21.0",
     "vazirmatn": "^33.0.3"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

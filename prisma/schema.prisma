@@ -39,7 +39,9 @@ model Transaction {
 model Settings {
   id String @id @default(cuid())
 
-  baselineBalance Float @default(0)
+  baselineBalance Float  @default(0)
+  passkey         String  @default("1234")
+  sessionToken    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
