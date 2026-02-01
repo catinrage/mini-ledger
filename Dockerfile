@@ -44,7 +44,7 @@ ENV NODE_ENV production
 
 # Copy package.json and bun.lockb for reference.
 COPY package.json . 
-COPY bun.lockb . 
+COPY bun.lock . 
 
 # Copy prisma folder.
 COPY prisma ./prisma
