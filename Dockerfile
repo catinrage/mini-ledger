@@ -17,6 +17,7 @@ FROM base AS deps
 # Copy package.json and bun.lockb to the container.
 COPY package.json . 
 COPY bun.lockb . 
+COPY bunfig.toml . 
 
 # Install dependencies using Bun's built-in package manager.
 RUN bun install --frozen-lockfile
