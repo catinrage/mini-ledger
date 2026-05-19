@@ -21,7 +21,7 @@
 <div class="relative flex w-full flex-col gap-2">
   <span>{label}</span>
   <input
-    class="relative z-[1] rounded-md bg-gray-100 px-4 py-1.5"
+    class="relative z-[1] rounded-md bg-gray-100 px-4 py-1.5 dark:bg-slate-800 dark:text-slate-100"
     type="text"
     autocomplete="off"
     {name}
@@ -37,10 +37,10 @@
     <div class="absolute left-0 top-0 text-us text-accent-600" transition:fly={{ y: 15 }}>مقدار جدید</div>
   {/if}
   {#if expanded}
-    <div class="absolute left-0 top-full z-30 flex w-full flex-col rounded-md bg-white p-2 shadow-md">
+    <div class="absolute left-0 top-full z-30 flex w-full flex-col rounded-md bg-white p-2 shadow-md dark:bg-slate-800 dark:text-slate-100 dark:shadow-black/30">
       {#each similarStrings.slice(0, 10) as suggestion}
         <button
-          class="rounded-md p-2 text-right duration-75 hover:bg-gray-100"
+          class="party-suggestion rounded-md p-2 text-right duration-75 hover:bg-gray-100 dark:hover:bg-slate-700"
           onmousedown={() => {
             value = suggestion;
           }}>{suggestion}</button
@@ -49,3 +49,9 @@
     </div>
   {/if}
 </div>
+
+<style lang="postcss">
+  :global(html.dark) .party-suggestion:hover {
+    @apply !bg-slate-700;
+  }
+</style>

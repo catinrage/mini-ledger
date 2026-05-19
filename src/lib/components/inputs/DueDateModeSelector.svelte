@@ -47,7 +47,7 @@
     <button
       type="button"
       onclick={() => handleModeChange('fixed')}
-      class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 duration-150 hover:border-accent-500"
+      class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 duration-150 hover:border-accent-500 dark:hover:border-accent-400"
       class:bg-accent-50={mode === 'fixed'}
       class:border-accent-600={mode === 'fixed'}
     >
@@ -57,7 +57,7 @@
     <button
       type="button"
       onclick={() => handleModeChange('relative')}
-      class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 duration-150 hover:border-accent-500"
+      class="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 duration-150 hover:border-accent-500 dark:hover:border-accent-400"
       class:bg-accent-50={mode === 'relative'}
       class:border-accent-600={mode === 'relative'}
     >
@@ -94,7 +94,7 @@
           type="number"
           bind:value={relativeOffsetDays}
           placeholder="مثلا: 10 یا -5"
-          class="rounded-lg border border-gray-300 px-3 py-2 text-black outline-none duration-150 hover:border-accent-500 focus:border-accent-600"
+          class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-black outline-none duration-150 hover:border-accent-500 focus:border-accent-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-accent-400 dark:focus:border-accent-400"
         />
       </div>
       {#if useNames}

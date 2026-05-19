@@ -80,3 +80,63 @@
   border-top: unset !important;
   @apply rounded-xl;
 }
+
+html.dark main {
+  background-image: linear-gradient(to right bottom, #0f172a, #111827, #1e293b, #172554, #0f172a);
+}
+
+html.dark .bg-white {
+  background-color: rgb(15 23 42 / 0.95) !important;
+}
+
+html.dark .bg-gray-50,
+html.dark .bg-gray-100 {
+  background-color: rgb(30 41 59 / 0.95) !important;
+}
+
+html.dark .bg-blue-50 {
+  background-color: rgb(30 58 138 / 0.3) !important;
+}
+
+html.dark .bg-accent-50 {
+  background-color: rgb(34 39 73 / 0.95) !important;
+}
+
+html.dark .bg-amber-50 {
+  background-color: rgb(120 53 15 / 0.22) !important;
+}
+
+html.dark .text-black {
+  color: rgb(241 245 249) !important;
+}
+
+html.dark .text-black\/80 {
+  color: rgb(203 213 225 / 0.8) !important;
+}
+
+html.dark .text-black\/70,
+html.dark .text-black\/60 {
+  color: rgb(203 213 225 / 0.75) !important;
+}
+
+html.dark .text-black\/50,
+html.dark .text-black\/40 {
+  color: rgb(148 163 184 / 0.8) !important;
+}
+
+html.dark .text-blue-800,
+html.dark .text-blue-700 {
+  color: rgb(191 219 254) !important;
+}
+
+html.dark .border-gray-200,
+html.dark .border-gray-300 {
+  border-color: rgb(71 85 105) !important;
+}
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  color: rgb(241 245 249);
+  caret-color: rgb(147 197 253);
+}

@@ -7,8 +7,29 @@
   const { children } = $props();
 
   const view = $derived($page.url.pathname.split('/')[1]);
+  let theme = $state<'light' | 'dark'>('light');
+
+  function applyTheme(nextTheme: 'light' | 'dark') {
+    theme = nextTheme;
+    document.documentElement.classList.toggle('dark', nextTheme === 'dark');
+    localStorage.setItem('theme', nextTheme);
+  }
+
+  function toggleTheme() {
+    applyTheme(theme === 'dark' ? 'light' : 'dark');
+  }
 
   onMount(async () => {
+    const storedTheme = localStorage.getItem('theme');
+    const initialTheme =
+      storedTheme === 'dark' || storedTheme === 'light'
+        ? storedTheme
+        : window.matchMedia('(prefers-color-scheme: dark)').matches
+          ? 'dark'
+          : 'light';
+
+    applyTheme(initialTheme);
+
     document.addEventListener(
       'wheel',
       function (event) {
@@ -43,18 +64,22 @@
   });
 </script>
 
-<main class="relative h-full p-6 text-black duration-100">
-  <img class="fixed bottom-0 left-0" src={waves} alt="" />
-  <div class="eng fixed bottom-3 left-0 z-10 w-full text-center text-xs uppercase text-black/80 sm:block">
+<main class="relative h-full p-6 text-black duration-200 dark:text-slate-100">
+  <img
+    class="fixed bottom-0 left-0 transition duration-500 dark:opacity-75 dark:saturate-125"
+    src={waves}
+    alt=""
+  />
+  <div class="eng fixed bottom-3 left-0 z-10 w-full text-center text-xs uppercase text-black/80 dark:text-slate-300 sm:block">
     hidaco | ledger v1.0.3
   </div>
 
   <div class="relative z-10 flex h-full w-full flex-col items-center gap-2 pb-6">
     <div class="backdrop-grayscale-lg flex h-full items-center rounded-xl bg-white/10 p-6">
       <div class="flex h-full w-full grow flex-col items-center gap-2 sm:w-200">
-        <div class="flex w-full gap-2 rounded-md bg-white px-4 py-2 text-xs">
+        <div class="flex w-full gap-2 rounded-md bg-white px-4 py-2 text-xs shadow-sm dark:bg-slate-900/95">
           <a
-            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105"
+            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105 dark:text-slate-300"
             class:active={view === 'view'}
             href="/view"
           >
@@ -62,7 +87,7 @@
             <span>لیست تراکنش ها</span>
           </a>
           <a
-            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105"
+            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105 dark:text-slate-300"
             class:active={view === 'add'}
             href="/add"
           >
@@ -70,24 +95,33 @@
             <span>ثبت تراکنش جدید</span>
           </a>
           <a
-            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105"
+            class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105 dark:text-slate-300"
             class:active={view === 'settings'}
             href="/settings"
           >
             <iconify-icon class="text-base" icon="line-md:cog"></iconify-icon>
             <span>تنظیمات</span>
           </a>
-          <form method="POST" action="/login?/logout" class="ml-auto">
+          <button
+            type="button"
+            class="press-effect mr-auto flex items-center rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:scale-105 dark:text-slate-300"
+            onclick={toggleTheme}
+            title={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}
+            aria-label={theme === 'dark' ? 'حالت روشن' : 'حالت تاریک'}
+          >
+            <iconify-icon class="text-base" icon={theme === 'dark' ? 'line-md:sunny-outline' : 'line-md:moon'}></iconify-icon>
+          </button>
+          <form method="POST" action="/login?/logout">
             <button
               type="submit"
-              class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:text-red-600"
+              class="press-effect flex items-center gap-1 rounded-xl px-3 py-1.5 text-black/70 duration-75 hover:text-red-600 dark:text-slate-300 dark:hover:text-red-400"
             >
               <iconify-icon class="text-base" icon="line-md:logout"></iconify-icon>
               <span>خروج</span>
             </button>
           </form>
         </div>
-        <div class="flex h-full w-full flex-col gap-4 rounded-md bg-white p-4 text-xs">
+        <div class="flex h-full w-full flex-col gap-4 rounded-md bg-white p-4 text-xs shadow-sm dark:bg-slate-900/95">
           {@render children()}
         </div>
       </div>
@@ -97,6 +131,6 @@
 
 <style lang="postcss">
   .active {
-    @apply bg-slate-700 text-white;
+    @apply bg-slate-700 text-white dark:bg-accent-600 dark:text-white;
   }
 </style>

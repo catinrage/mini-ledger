@@ -21,6 +21,11 @@
 
 <svelte:head>
   <title>Ledger</title>
+  <script>
+    const theme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.classList.toggle('dark', theme === 'dark' || (!theme && prefersDark));
+  </script>
 </svelte:head>
 
 <ConfirmDialog />
