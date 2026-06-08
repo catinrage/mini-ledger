@@ -406,7 +406,7 @@
   <div class="flex flex-col gap-2" use:autoAnimate>
     <form method="post" use:enhance>
       {#each data.transactions as transaction (transaction.id)}
-        <TransactionItem {...transaction} onEdit={openEditTransaction} />
+        <TransactionItem {...transaction} dependencyTransactions={data.dependencyTransactions} onEdit={openEditTransaction} />
       {:else}
         <div class="flex items-center p-3 text-sm">
           <p class="text-black/50">تراکنشی یافت نشد</p>

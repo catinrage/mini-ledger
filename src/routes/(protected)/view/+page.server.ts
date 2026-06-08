@@ -259,6 +259,27 @@ export const load: PageServerLoad = async function ({ url }) {
       })),
     );
 
+    const dependencyTransactions = await prisma.transaction.findMany({
+      select: {
+        id: true,
+        party: true,
+        amount: true,
+        type: true,
+        description: true,
+        relativeDueDateTransactionId: true,
+        relativeDueDateOffsetDays: true,
+        dueDateResolved: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const dependencyTransactionsAwaited = await Promise.all(
+      dependencyTransactions.map(async (t) => ({
+        ...t,
+        dueDateResolved: await t.dueDateResolved,
+      })),
+    );
+
     return {
       form,
       transactions: sanitizedTransactions,
@@ -270,6 +291,9 @@ export const load: PageServerLoad = async function ({ url }) {
       allTransactions: superjson.parse(
         superjson.stringify(allTransactionsAwaited),
       ) as typeof allTransactionsAwaited,
+      dependencyTransactions: superjson.parse(
+        superjson.stringify(dependencyTransactionsAwaited),
+      ) as typeof dependencyTransactionsAwaited,
     };
   } catch (error) {
     console.error(error);

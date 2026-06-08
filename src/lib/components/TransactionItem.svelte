@@ -3,6 +3,17 @@
   import CircularCheckbox from '$lib/components/inputs/CircularCheckbox.svelte';
   import { currencyNumberFormatter } from '$lib/helpers';
   import type { TransactionType } from '@prisma/client';
+
+  type DependencyTransaction = {
+    id: string;
+    party: string;
+    amount: number;
+    type: TransactionType;
+    description?: string | null;
+    relativeDueDateTransactionId?: string | null;
+    relativeDueDateOffsetDays?: number | null;
+    dueDateResolved?: Date | null;
+  };
   const {
     id,
     party,
@@ -15,6 +26,7 @@
     relativeDueDateTransactionId,
     relativeDueDateOffsetDays,
     dueDateResolved,
+    dependencyTransactions = [],
     onEdit,
   }: {
     id: string;
@@ -28,12 +40,120 @@
     relativeDueDateTransactionId?: string | null;
     relativeDueDateOffsetDays?: number | null;
     dueDateResolved?: Date | null;
+    dependencyTransactions?: DependencyTransaction[];
     onEdit?: (transaction: any) => void;
   } = $props();
 
   let isIncluded = $state(includeInBalance);
+  let showDependencies = $state(false);
   let highlightTimeout: ReturnType<typeof setTimeout> | undefined;
   let highlightedElement: HTMLElement | null = null;
+
+
+  const dateFormatter = new Intl.DateTimeFormat('fa-IR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    calendar: 'persian',
+  });
+
+  function formatDueDate(value?: Date | null) {
+    if (!value) return 'نامشخص';
+    return dateFormatter.format(new Date(value));
+  }
+
+  function transactionLabel(transaction: DependencyTransaction) {
+    const descriptionText = transaction.description?.trim();
+    if (descriptionText) return descriptionText;
+    const typeText = transaction.type === 'WITHDRAW' ? 'پرداخت' : 'دریافت';
+    return `${typeText} ${currencyNumberFormatter(transaction.amount)} تومان - ${transaction.party}`;
+  }
+
+  function getTransactionMap() {
+    return new Map(dependencyTransactions.map((transaction) => [transaction.id, transaction]));
+  }
+
+  function getChildrenByParentId() {
+    const childrenByParentId = new Map<string, DependencyTransaction[]>();
+
+    for (const transaction of dependencyTransactions) {
+      if (!transaction.relativeDueDateTransactionId) continue;
+      const children = childrenByParentId.get(transaction.relativeDueDateTransactionId) ?? [];
+      children.push(transaction);
+      childrenByParentId.set(transaction.relativeDueDateTransactionId, children);
+    }
+
+    return childrenByParentId;
+  }
+
+  function getParentRows() {
+    const transactionById = getTransactionMap();
+    const rows: Array<{ transaction: DependencyTransaction; depth: number }> = [];
+    const visited = new Set<string>([id]);
+    let parentId = relativeDueDateTransactionId ?? undefined;
+    let depth = 0;
+
+    while (parentId && !visited.has(parentId)) {
+      const parent = transactionById.get(parentId);
+      if (!parent) break;
+
+      rows.push({ transaction: parent, depth });
+      visited.add(parent.id);
+      parentId = parent.relativeDueDateTransactionId ?? undefined;
+      depth += 1;
+    }
+
+    return rows;
+  }
+
+  function getChildRows() {
+    const childrenByParentId = getChildrenByParentId();
+    const rows: Array<{ transaction: DependencyTransaction; depth: number }> = [];
+    const visited = new Set<string>([id]);
+
+    function visit(parentId: string, depth: number) {
+      const children = childrenByParentId.get(parentId) ?? [];
+
+      for (const child of children) {
+        if (visited.has(child.id)) continue;
+        rows.push({ transaction: child, depth });
+        visited.add(child.id);
+        visit(child.id, depth + 1);
+      }
+    }
+
+    visit(id, 0);
+    return rows;
+  }
+
+  function scrollToTransaction(transactionId: string) {
+    if (typeof document === 'undefined') return;
+
+    const target = document.querySelector<HTMLElement>(`[data-transaction-id="${transactionId}"]`);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    clearHighlightTimeout();
+    removeHighlight();
+
+    highlightedElement = target;
+    target.classList.add('relative-highlight');
+
+    highlightTimeout = setTimeout(() => {
+      removeHighlight();
+      highlightTimeout = undefined;
+    }, 2000);
+  }
+
+  function getDependencySummary() {
+    const parentCount = getParentRows().length;
+    const childCount = getChildRows().length;
+
+    if (parentCount && childCount) return `${parentCount} والد، ${childCount} فرزند`;
+    if (parentCount) return `${parentCount} والد`;
+    if (childCount) return `${childCount} فرزند`;
+    return 'بدون وابستگی';
+  }
 
   function handleCheckboxChange(checked: boolean) {
     isIncluded = checked;
@@ -79,25 +199,7 @@
 
   function scrollToReference() {
     if (!relativeDueDateTransactionId) return;
-    if (typeof document === 'undefined') return;
-
-    const target = document.querySelector<HTMLElement>(
-      `[data-transaction-id="${relativeDueDateTransactionId}"]`,
-    );
-
-    if (!target) return;
-
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    clearHighlightTimeout();
-    removeHighlight();
-
-    highlightedElement = target;
-    target.classList.add('relative-highlight');
-
-    highlightTimeout = setTimeout(() => {
-      removeHighlight();
-      highlightTimeout = undefined;
-    }, 2000);
+    scrollToTransaction(relativeDueDateTransactionId);
   }
 
   function openRelativeTransactionCreator() {
@@ -245,6 +347,94 @@
         </button>
       </div>
     {/if}
+
+
+    {#if getParentRows().length || getChildRows().length}
+      <div class="rounded-lg border border-sky-100 bg-sky-50/70 p-3 text-us dark:border-sky-400/10 dark:bg-sky-400/10">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between gap-3 text-sky-800 dark:text-sky-100"
+          onclick={() => (showDependencies = !showDependencies)}
+        >
+          <span class="flex items-center gap-2 font-semibold">
+            <iconify-icon icon="material-symbols:account-tree-outline-rounded"></iconify-icon>
+            <span>وابستگی‌های تراکنش</span>
+          </span>
+          <span class="flex items-center gap-1 text-sky-600 dark:text-sky-200">
+            <span>{getDependencySummary()}</span>
+            <iconify-icon
+              class="duration-150"
+              class:rotate-180={showDependencies}
+              icon="material-symbols:keyboard-arrow-down-rounded"
+            ></iconify-icon>
+          </span>
+        </button>
+
+        {#if showDependencies}
+          <div class="mt-3 grid gap-3 lg:grid-cols-2">
+            <div class="flex flex-col gap-2 rounded-md bg-white/80 p-3 dark:bg-slate-900/40">
+              <div class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-100">
+                <iconify-icon icon="material-symbols:arrow-upward-rounded"></iconify-icon>
+                <span>والدها تا ریشه</span>
+              </div>
+              {#if getParentRows().length}
+                <div class="flex flex-col gap-1.5">
+                  {#each getParentRows() as row (row.transaction.id)}
+                    <button
+                      type="button"
+                      class="dependency-row text-right"
+                      style={`--depth: ${row.depth}`}
+                      onclick={() => scrollToTransaction(row.transaction.id)}
+                    >
+                      <span class="dependency-branch"></span>
+                      <span class="flex min-w-0 flex-col gap-1">
+                        <span class="font-mono text-[10px] text-slate-500" dir="ltr">{row.transaction.id}</span>
+                        <span class="truncate text-slate-700 dark:text-slate-100">{transactionLabel(row.transaction)}</span>
+                        <span class="text-[10px] text-slate-500">
+                          سررسید نهایی: {formatDueDate(row.transaction.dueDateResolved)} · فاصله: {row.transaction.relativeDueDateOffsetDays ?? 0} روز
+                        </span>
+                      </span>
+                    </button>
+                  {/each}
+                </div>
+              {:else}
+                <span class="text-slate-400">والدی ثبت نشده است</span>
+              {/if}
+            </div>
+
+            <div class="flex flex-col gap-2 rounded-md bg-white/80 p-3 dark:bg-slate-900/40">
+              <div class="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-100">
+                <iconify-icon icon="material-symbols:arrow-downward-rounded"></iconify-icon>
+                <span>فرزندها تا انتهای زنجیره</span>
+              </div>
+              {#if getChildRows().length}
+                <div class="flex flex-col gap-1.5">
+                  {#each getChildRows() as row (row.transaction.id)}
+                    <button
+                      type="button"
+                      class="dependency-row text-right"
+                      style={`--depth: ${row.depth}`}
+                      onclick={() => scrollToTransaction(row.transaction.id)}
+                    >
+                      <span class="dependency-branch"></span>
+                      <span class="flex min-w-0 flex-col gap-1">
+                        <span class="font-mono text-[10px] text-slate-500" dir="ltr">{row.transaction.id}</span>
+                        <span class="truncate text-slate-700 dark:text-slate-100">{transactionLabel(row.transaction)}</span>
+                        <span class="text-[10px] text-slate-500">
+                          سررسید نهایی: {formatDueDate(row.transaction.dueDateResolved)} · فاصله: {row.transaction.relativeDueDateOffsetDays ?? 0} روز
+                        </span>
+                      </span>
+                    </button>
+                  {/each}
+                </div>
+              {:else}
+                <span class="text-slate-400">فرزندی ثبت نشده است</span>
+              {/if}
+            </div>
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 </div>
 
@@ -254,5 +444,31 @@
     background-color: #f0f9ff;
     box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
     transition: outline-color 0.3s ease;
+  }
+
+
+  .dependency-row {
+    --depth: 0;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: 8px;
+    margin-right: calc(var(--depth) * 18px);
+    border-radius: 6px;
+    padding: 8px;
+    color: inherit;
+    transition:
+      background-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .dependency-row:hover {
+    background-color: rgba(14, 165, 233, 0.08);
+  }
+
+  .dependency-branch {
+    min-height: 100%;
+    border-right: 2px solid rgba(14, 165, 233, 0.28);
+    border-bottom: 2px solid rgba(14, 165, 233, 0.28);
+    border-bottom-right-radius: 6px;
   }
 </style>
