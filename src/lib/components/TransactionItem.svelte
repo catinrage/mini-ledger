@@ -86,13 +86,6 @@
     return dateFormatter.format(new Date(value));
   }
 
-  function transactionLabel(transaction: DependencyTransaction) {
-    const descriptionText = transaction.description?.trim();
-    if (descriptionText) return descriptionText;
-    const typeText = transaction.type === 'WITHDRAW' ? 'پرداخت' : 'دریافت';
-    return `${typeText} ${currencyNumberFormatter(transaction.amount)} تومان - ${transaction.party}`;
-  }
-
   function getTransactionMap() {
     return new Map(dependencyTransactions.map((transaction) => [transaction.id, transaction]));
   }
@@ -244,6 +237,47 @@
     goto(`/add?${params.toString()}`);
   }
 </script>
+
+{#snippet dependencyRow(row: { transaction: DependencyTransaction; depth: number })}
+  <button
+    type="button"
+    class="dependency-row text-right"
+    style={`--depth: ${row.depth}`}
+    onclick={() => scrollToTransaction(row.transaction.id)}
+  >
+    <span class="dependency-branch"></span>
+    <span class="flex min-w-0 flex-col gap-1.5">
+      <span class="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span class="font-semibold text-slate-700 dark:text-slate-100">{row.transaction.party}</span>
+        {#if row.transaction.type === 'WITHDRAW'}
+          <span class="flex items-center gap-1 text-us text-rose-600 dark:text-rose-400">
+            <iconify-icon class="-rotate-90" icon="uil:sign-out-alt"></iconify-icon>
+            <span>پرداخت</span>
+          </span>
+        {:else}
+          <span class="flex items-center gap-1 text-us text-teal-600 dark:text-teal-400">
+            <iconify-icon class="-rotate-90" icon="uil:sign-in-alt"></iconify-icon>
+            <span>دریافت</span>
+          </span>
+        {/if}
+        <span class="text-slate-600 dark:text-slate-200">
+          {currencyNumberFormatter(row.transaction.amount)}
+          <span class="text-[10px] text-slate-400">تومان</span>
+        </span>
+      </span>
+      {#if row.transaction.description?.trim()}
+        <span class="text-[10px] leading-relaxed text-slate-500 dark:text-slate-400">
+          {row.transaction.description}
+        </span>
+      {/if}
+      <span class="text-[10px] text-slate-500">
+        سررسید نهایی: {formatDueDate(row.transaction.dueDateResolved)} · فاصله: {row.transaction
+          .relativeDueDateOffsetDays ?? 0} روز
+      </span>
+      <span class="font-mono text-[10px] text-slate-400" dir="ltr">{row.transaction.id}</span>
+    </span>
+  </button>
+{/snippet}
 
 <div
   bind:this={rootElement}
@@ -446,21 +480,7 @@
               {#if getParentRows().length}
                 <div class="flex flex-col gap-1.5">
                   {#each getParentRows() as row (row.transaction.id)}
-                    <button
-                      type="button"
-                      class="dependency-row text-right"
-                      style={`--depth: ${row.depth}`}
-                      onclick={() => scrollToTransaction(row.transaction.id)}
-                    >
-                      <span class="dependency-branch"></span>
-                      <span class="flex min-w-0 flex-col gap-1">
-                        <span class="font-mono text-[10px] text-slate-500" dir="ltr">{row.transaction.id}</span>
-                        <span class="truncate text-slate-700 dark:text-slate-100">{transactionLabel(row.transaction)}</span>
-                        <span class="text-[10px] text-slate-500">
-                          سررسید نهایی: {formatDueDate(row.transaction.dueDateResolved)} · فاصله: {row.transaction.relativeDueDateOffsetDays ?? 0} روز
-                        </span>
-                      </span>
-                    </button>
+                    {@render dependencyRow(row)}
                   {/each}
                 </div>
               {:else}
@@ -476,21 +496,7 @@
               {#if getChildRows().length}
                 <div class="flex flex-col gap-1.5">
                   {#each getChildRows() as row (row.transaction.id)}
-                    <button
-                      type="button"
-                      class="dependency-row text-right"
-                      style={`--depth: ${row.depth}`}
-                      onclick={() => scrollToTransaction(row.transaction.id)}
-                    >
-                      <span class="dependency-branch"></span>
-                      <span class="flex min-w-0 flex-col gap-1">
-                        <span class="font-mono text-[10px] text-slate-500" dir="ltr">{row.transaction.id}</span>
-                        <span class="truncate text-slate-700 dark:text-slate-100">{transactionLabel(row.transaction)}</span>
-                        <span class="text-[10px] text-slate-500">
-                          سررسید نهایی: {formatDueDate(row.transaction.dueDateResolved)} · فاصله: {row.transaction.relativeDueDateOffsetDays ?? 0} روز
-                        </span>
-                      </span>
-                    </button>
+                    {@render dependencyRow(row)}
                   {/each}
                 </div>
               {:else}
