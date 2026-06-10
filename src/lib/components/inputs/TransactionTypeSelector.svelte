@@ -8,7 +8,7 @@
   }: { name?: string; value: TransactionType; label: string } = $props();
 </script>
 
-<div class="relative flex w-full flex-col gap-2">
+<div class="relative flex h-full w-full flex-col justify-between gap-2">
   <span>{label}</span>
   <div class="relative z-[1] flex overflow-hidden rounded-lg bg-gray-100 text-xs">
     <input type="hidden" {name} bind:value />

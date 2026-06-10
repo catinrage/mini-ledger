@@ -32,8 +32,14 @@ model Transaction {
   applied          Boolean @default(false)
   includeInBalance Boolean @default(true)
 
+  recurringRuleId       String?
+  recurringOccurrenceDate DateTime?
+  recurringRule         RecurringTransactionRule? @relation(fields: [recurringRuleId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([recurringRuleId, recurringOccurrenceDate])
 }
 
 model Settings {
@@ -47,7 +53,36 @@ model Settings {
   updatedAt DateTime @updatedAt
 }
 
+model RecurringTransactionRule {
+  id String @id @default(cuid())
+
+  party       String
+  type        TransactionType
+  amount      Float
+  description String?
+
+  frequency RecurrenceFrequency
+  interval  Int
+  startDate DateTime
+  endDate   DateTime?
+
+  active    Boolean   @default(true)
+  stoppedAt DateTime?
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 enum TransactionType {
   DEPOSIT
   WITHDRAW
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
 }

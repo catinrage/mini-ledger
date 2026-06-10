@@ -14,6 +14,23 @@
     relativeDueDateOffsetDays?: number | null;
     dueDateResolved?: Date | null;
   };
+
+  type TransactionRecurringRule = {
+    id: string;
+    frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY';
+    interval: number;
+    startDate: Date;
+    endDate?: Date | null;
+    active: boolean;
+    stoppedAt?: Date | null;
+  };
+
+  const recurrenceFrequencyLabels: Record<TransactionRecurringRule['frequency'], string> = {
+    DAILY: 'روزانه',
+    WEEKLY: 'هفتگی',
+    MONTHLY: 'ماهانه',
+    YEARLY: 'سالانه',
+  };
   const {
     id,
     party,
@@ -27,6 +44,9 @@
     relativeDueDateOffsetDays,
     dueDateResolved,
     dependencyTransactions = [],
+    recurringRuleId,
+    recurringOccurrenceDate,
+    recurringRule,
     onEdit,
   }: {
     id: string;
@@ -41,11 +61,15 @@
     relativeDueDateOffsetDays?: number | null;
     dueDateResolved?: Date | null;
     dependencyTransactions?: DependencyTransaction[];
+    recurringRuleId?: string | null;
+    recurringOccurrenceDate?: Date | null;
+    recurringRule?: TransactionRecurringRule | null;
     onEdit?: (transaction: any) => void;
   } = $props();
 
   let isIncluded = $state(includeInBalance);
   let showDependencies = $state(false);
+  let rootElement = $state<HTMLDivElement | null>(null);
   let highlightTimeout: ReturnType<typeof setTimeout> | undefined;
   let highlightedElement: HTMLElement | null = null;
 
@@ -155,9 +179,19 @@
     return 'بدون وابستگی';
   }
 
+  function getRecurringSummary() {
+    if (!recurringRule) return '';
+
+    const label = recurrenceFrequencyLabels[recurringRule.frequency];
+    const intervalText = recurringRule.interval > 1 ? `هر ${recurringRule.interval} دوره` : `هر دوره`;
+    return `${label} - ${intervalText}`;
+  }
+
   function handleCheckboxChange(checked: boolean) {
     isIncluded = checked;
-    const form = document.querySelector('form');
+    // Submit the enclosing enhanced form, not the first form in the document
+    // (that one is the logout form in the layout and triggers a full page load)
+    const form = rootElement?.closest('form');
     if (form) {
       // Create a hidden input for the action
       const actionInput = document.createElement('input');
@@ -212,6 +246,7 @@
 </script>
 
 <div
+  bind:this={rootElement}
   class="flex flex-col gap-2 border-b border-dashed border-black/5 p-4 duration-75 hover:bg-slate-100 dark:border-slate-700/70 dark:hover:bg-slate-800"
   class:opacity-50={!isIncluded}
   data-transaction-id={id}
@@ -287,6 +322,9 @@
               relativeDueDateTransactionId,
               relativeDueDateOffsetDays,
               balance,
+              recurringRuleId,
+              recurringOccurrenceDate,
+              recurringRule,
             })}
           title="ویرایش"
         >
@@ -345,6 +383,34 @@
           <iconify-icon icon="material-symbols:travel-explore-outline-rounded"></iconify-icon>
           <span>نمایش تراکنش مرجع</span>
         </button>
+      </div>
+    {/if}
+
+    {#if recurringRuleId}
+      <div
+        class="flex flex-col gap-2 rounded-lg bg-emerald-50 p-3 text-us text-emerald-800 dark:bg-emerald-400/10 dark:text-emerald-100 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="flex items-center gap-2">
+          <iconify-icon icon="material-symbols:event-repeat-outline-rounded"></iconify-icon>
+          <span>
+            <strong>تراکنش تکرارشونده:</strong>
+            {#if recurringRule}
+              {getRecurringSummary()}
+              {#if recurringOccurrenceDate}
+                <span class="mr-1 text-emerald-600 dark:text-emerald-200">
+                  (نمونه {formatDueDate(recurringOccurrenceDate)})
+                </span>
+              {/if}
+            {:else}
+              <span class="text-emerald-600 dark:text-emerald-200">الگوی تکرار در دسترس نیست</span>
+            {/if}
+          </span>
+        </div>
+        {#if recurringRule && !recurringRule.active}
+          <span class="rounded-md bg-white/70 px-2 py-1 text-[10px] text-emerald-700 dark:bg-slate-900/30 dark:text-emerald-100">
+            متوقف شده
+          </span>
+        {/if}
       </div>
     {/if}
 

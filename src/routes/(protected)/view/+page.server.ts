@@ -4,7 +4,8 @@ import { message, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 
-import { type Prisma, TransactionType } from '@prisma/client';
+import { RecurrenceFrequency, type Prisma, TransactionType } from '@prisma/client';
+import { generateAllRecurringTransactions, generateRecurringTransactions } from '$lib/server/recurring';
 
 import type { Actions, PageServerLoad } from './$types';
 
@@ -60,6 +61,19 @@ const updateTransactionSchema = z
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
     relativeDueDateOffsetDays: z.coerce.number().int().optional(),
+    recurringEnabled: z.boolean().optional().default(false),
+    recurringRuleId: z.string().optional(),
+    recurringFrequency: z.nativeEnum(RecurrenceFrequency).optional(),
+    recurringInterval: z.coerce.number().int().min(1).optional(),
+    recurringStartDate: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+    recurringEndDateEnabled: z.boolean().optional().default(false),
+    recurringEndDate: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
   })
   .superRefine((data, ctx) => {
     const hasFixedDate = data.date instanceof Date;
@@ -80,6 +94,44 @@ const updateTransactionSchema = z
         message: 'در حالت سررسید نسبی، تعداد روز فاصله الزامی است.',
       });
     }
+
+    if (data.recurringEnabled && !data.recurringFrequency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringFrequency'],
+        message: 'نوع تکرار الزامی است.',
+      });
+    }
+
+    if (data.recurringEnabled && !data.recurringInterval) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringInterval'],
+        message: 'فاصله تکرار الزامی است.',
+      });
+    }
+
+    if (data.recurringEnabled && !(data.recurringStartDate instanceof Date)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringStartDate'],
+        message: 'تاریخ شروع تکرار الزامی است.',
+      });
+    }
+
+    if (
+      data.recurringEnabled &&
+      data.recurringEndDateEnabled &&
+      data.recurringStartDate instanceof Date &&
+      data.recurringEndDate instanceof Date &&
+      data.recurringEndDate < data.recurringStartDate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringEndDate'],
+        message: 'تاریخ پایان نباید قبل از تاریخ شروع باشد.',
+      });
+    }
   });
 
 const applyTransactionSchema = z.object({
@@ -97,7 +149,15 @@ const toggleIncludeInBalanceSchema = z.object({
   }),
 });
 
+const stopRecurringRuleSchema = z.object({
+  id: z.string({
+    message: 'این مقدار باید از نوع رشته باشد',
+  }),
+});
+
 export const load: PageServerLoad = async function ({ url }) {
+  await generateAllRecurringTransactions();
+
   const id = url.searchParams.get('id');
   const party = url.searchParams.get('party');
   const minDate = Number(url.searchParams.get('minDate'));
@@ -191,6 +251,19 @@ export const load: PageServerLoad = async function ({ url }) {
         relativeDueDateTransactionId: true,
         relativeDueDateOffsetDays: true,
         dueDateResolved: true,
+        recurringRuleId: true,
+        recurringOccurrenceDate: true,
+        recurringRule: {
+          select: {
+            id: true,
+            frequency: true,
+            interval: true,
+            startDate: true,
+            endDate: true,
+            active: true,
+            stoppedAt: true,
+          },
+        },
       },
     });
     const form = await superValidate(zod(deleteTransactionSchema));
@@ -221,6 +294,17 @@ export const load: PageServerLoad = async function ({ url }) {
       relativeDueDateTransactionId?: string | null;
       relativeDueDateOffsetDays?: number | null;
       dueDateResolved?: Date | null;
+      recurringRuleId?: string | null;
+      recurringOccurrenceDate?: Date | null;
+      recurringRule?: {
+        id: string;
+        frequency: RecurrenceFrequency;
+        interval: number;
+        startDate: Date;
+        endDate?: Date | null;
+        active: boolean;
+        stoppedAt?: Date | null;
+      } | null;
     }[];
 
     // Calculate current total balance (baseline + all non-applied transactions that are included in balance)
@@ -269,6 +353,8 @@ export const load: PageServerLoad = async function ({ url }) {
         relativeDueDateTransactionId: true,
         relativeDueDateOffsetDays: true,
         dueDateResolved: true,
+        recurringRuleId: true,
+        recurringOccurrenceDate: true,
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -402,6 +488,52 @@ export const actions = {
     }
 
     try {
+      let recurringRuleId = form.data.recurringRuleId;
+      let recurringOccurrenceDate: Date | undefined;
+
+      if (form.data.recurringEnabled) {
+        if (recurringRuleId) {
+          const rule = await prisma.recurringTransactionRule.update({
+            where: { id: recurringRuleId },
+            data: {
+              frequency: form.data.recurringFrequency ?? RecurrenceFrequency.MONTHLY,
+              interval: form.data.recurringInterval ?? 1,
+              startDate: form.data.recurringStartDate ?? form.data.date ?? new Date(),
+              endDate: form.data.recurringEndDateEnabled ? form.data.recurringEndDate : null,
+              active: true,
+              stoppedAt: null,
+            },
+          });
+
+          await generateRecurringTransactions(rule);
+        } else {
+          const rule = await prisma.recurringTransactionRule.create({
+            data: {
+              party: form.data.party,
+              type: form.data.type,
+              amount: form.data.amount,
+              description: form.data.description || '',
+              frequency: form.data.recurringFrequency ?? RecurrenceFrequency.MONTHLY,
+              interval: form.data.recurringInterval ?? 1,
+              startDate: form.data.recurringStartDate ?? form.data.date ?? new Date(),
+              endDate: form.data.recurringEndDateEnabled ? form.data.recurringEndDate : undefined,
+            },
+          });
+
+          recurringRuleId = rule.id;
+          recurringOccurrenceDate = form.data.recurringStartDate ?? form.data.date ?? new Date();
+          await generateRecurringTransactions(rule);
+        }
+      } else if (recurringRuleId) {
+        await prisma.recurringTransactionRule.update({
+          where: { id: recurringRuleId },
+          data: {
+            active: false,
+            stoppedAt: new Date(),
+          },
+        });
+      }
+
       const result = await prisma.transaction.update({
         where: {
           id: form.data.id,
@@ -415,6 +547,8 @@ export const actions = {
           date: form.data.date,
           relativeDueDateTransactionId: form.data.date ? null : form.data.relativeDueDateTransactionId,
           relativeDueDateOffsetDays: form.data.date ? null : form.data.relativeDueDateOffsetDays,
+          recurringRuleId: recurringRuleId ?? undefined,
+          recurringOccurrenceDate,
         },
       });
       return message(form, 'تراکنش با موفقیت به‌روزرسانی شد');
@@ -501,6 +635,34 @@ export const actions = {
       return message(form, 'وضعیت تراکنش با موفقیت تغییر یافت');
     } catch (error) {
       console.error('Error toggling includeInBalance:', error);
+      return {
+        status: 500,
+        form,
+      };
+    }
+  },
+
+  stopRecurringRule: async (event) => {
+    const form = await superValidate(event, zod(stopRecurringRuleSchema));
+    if (!form.valid) {
+      return {
+        status: 400,
+        form,
+      };
+    }
+
+    try {
+      await prisma.recurringTransactionRule.update({
+        where: { id: form.data.id },
+        data: {
+          active: false,
+          stoppedAt: new Date(),
+        },
+      });
+
+      return message(form, 'تکرار تراکنش متوقف شد');
+    } catch (error) {
+      console.error('Error stopping recurring rule:', error);
       return {
         status: 500,
         form,

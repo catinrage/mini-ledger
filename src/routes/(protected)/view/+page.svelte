@@ -14,7 +14,9 @@
   import DateSelector from '$lib/components/inputs/DateSelector.svelte';
   import DueDateModeSelector from '$lib/components/inputs/DueDateModeSelector.svelte';
   import PartySelector from '$lib/components/inputs/PartySelector.svelte';
+  import RecurringControls from '$lib/components/inputs/RecurringControls.svelte';
   import TextArea from '$lib/components/inputs/TextArea.svelte';
+  import TransactionKindSelector from '$lib/components/inputs/TransactionKindSelector.svelte';
   import TransactionTypeSelector from '$lib/components/inputs/TransactionTypeSelector.svelte';
   import LightBox from '$lib/components/LightBox.svelte';
   import { AmountFilter, DateFilter, DescriptionFilter, Filter, PartyFilter, TypeFilter } from '$lib/filters';
@@ -72,12 +74,17 @@
           return;
         }
         jsonData({ id, includeInBalance: include === 'true' });
+      } else if (action.search === '?/stopRecurringRule') {
+        const submitterButton = submitter instanceof HTMLButtonElement ? submitter : undefined;
+        if (!submitterButton) {
+          cancel();
+          return;
+        }
+        jsonData({ id: submitterButton.value });
       } else if (action.search === '?/updateTransaction') {
-        // Send JSON data for update transaction
         const amountStr = String(editFormValues.amount || '0').replaceAll(/,/g, '');
         const amountNum = Number(amountStr) || 0;
-
-        console.log('Sending update with amount:', amountNum, 'from string:', editFormValues.amount);
+        const isRecurring = editTransactionKind === 'recurring';
 
         jsonData({
           id: editFormValues.id,
@@ -85,11 +92,25 @@
           amount: amountNum,
           type: editFormValues.type,
           description: editFormValues.description,
-          date: editDueDateMode === 'fixed' ? editDueDateFixed : undefined,
+          // The server requires a due date even for recurring transactions;
+          // fall back to the rule start date when the recurring tab is active
+          date:
+            editDueDateMode === 'fixed'
+              ? editDueDateFixed
+              : isRecurring
+                ? editRecurringStartDate
+                : undefined,
           relativeDueDateTransactionId:
-            editDueDateMode === 'relative' ? editDueDateRelativeTransactionId : undefined,
+            !isRecurring && editDueDateMode === 'relative' ? editDueDateRelativeTransactionId : undefined,
           relativeDueDateOffsetDays:
-            editDueDateMode === 'relative' ? editDueDateRelativeOffsetDays : undefined,
+            !isRecurring && editDueDateMode === 'relative' ? editDueDateRelativeOffsetDays : undefined,
+          recurringEnabled: isRecurring,
+          recurringRuleId: editRecurringRuleId || undefined,
+          recurringFrequency: editRecurringFrequency,
+          recurringInterval: editRecurringInterval,
+          recurringStartDate: editRecurringStartDate,
+          recurringEndDateEnabled: editRecurringEndDateEnabled,
+          recurringEndDate: editRecurringEndDateEnabled ? editRecurringEndDate : undefined,
         });
       }
     },
@@ -118,6 +139,13 @@
           });
         } else if (action.includes('toggleIncludeInBalance')) {
           // Don't show a toast for this action as it's a quick toggle
+        } else if (action.includes('stopRecurringRule')) {
+          ToasterStateManager.add({
+            type: 'success',
+            message: 'تکرار تراکنش متوقف شد',
+            duration: 5000,
+          });
+          editTransactionKind = 'single';
         }
       } else {
         ToasterStateManager.add({
@@ -168,10 +196,18 @@
   });
 
   type DueDateMode = 'none' | 'fixed' | 'relative';
+  type TransactionKind = 'single' | 'recurring';
   let editDueDateMode = $state<DueDateMode>('none');
   let editDueDateFixed = $state<Date>(new Date());
   let editDueDateRelativeTransactionId = $state<string>('');
   let editDueDateRelativeOffsetDays = $state<number>(0);
+  let editTransactionKind = $state<TransactionKind>('single');
+  let editRecurringRuleId = $state<string>('');
+  let editRecurringFrequency = $state<'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'>('MONTHLY');
+  let editRecurringInterval = $state<number>(1);
+  let editRecurringStartDate = $state<Date>(new Date());
+  let editRecurringEndDateEnabled = $state(false);
+  let editRecurringEndDate = $state<Date>(new Date());
 
   function addAmountFilter(min: number, max: number) {
     if (min >= max && max !== 0) {
@@ -238,6 +274,26 @@
       editDueDateFixed = new Date(transaction.date);
     } else {
       editDueDateMode = 'none';
+    }
+
+    if (transaction.recurringRule) {
+      editTransactionKind = transaction.recurringRule.active ? 'recurring' : 'single';
+      editRecurringRuleId = transaction.recurringRule.id;
+      editRecurringFrequency = transaction.recurringRule.frequency;
+      editRecurringInterval = transaction.recurringRule.interval;
+      editRecurringStartDate = new Date(transaction.recurringRule.startDate);
+      editRecurringEndDateEnabled = Boolean(transaction.recurringRule.endDate);
+      editRecurringEndDate = transaction.recurringRule.endDate
+        ? new Date(transaction.recurringRule.endDate)
+        : new Date();
+    } else {
+      editTransactionKind = 'single';
+      editRecurringRuleId = '';
+      editRecurringFrequency = 'MONTHLY';
+      editRecurringInterval = 1;
+      editRecurringStartDate = transaction.date ? new Date(transaction.date) : new Date();
+      editRecurringEndDateEnabled = false;
+      editRecurringEndDate = new Date();
     }
 
     view = 'edit-transaction';
@@ -579,6 +635,8 @@
       <form method="post" action="?/updateTransaction" use:enhance class="flex flex-col gap-5">
         <input type="hidden" name="id" value={editFormValues.id} />
 
+        <TransactionKindSelector bind:value={editTransactionKind} />
+
         <div class="relative">
           <PartySelector label="شخص" bind:value={editFormValues.party} suggestions={data.parties} />
         </div>
@@ -595,17 +653,29 @@
           <TextArea label="توضیحات تراکنش" bind:value={editFormValues.description} />
         </div>
 
-        <div class="rounded-lg bg-gray-50 p-4">
-          <DueDateModeSelector
-            bind:mode={editDueDateMode}
-            bind:fixedDate={editDueDateFixed}
-            bind:relativeTransactionId={editDueDateRelativeTransactionId}
-            bind:relativeOffsetDays={editDueDateRelativeOffsetDays}
-            transactions={data.allTransactions}
-            currentTransactionId={editFormValues.id}
-            useNames={false}
-          />
-        </div>
+        {#if editTransactionKind === 'single'}
+          <div class="rounded-lg bg-gray-50 p-4">
+            <DueDateModeSelector
+              bind:mode={editDueDateMode}
+              bind:fixedDate={editDueDateFixed}
+              bind:relativeTransactionId={editDueDateRelativeTransactionId}
+              bind:relativeOffsetDays={editDueDateRelativeOffsetDays}
+              transactions={data.allTransactions}
+              currentTransactionId={editFormValues.id}
+              useNames={false}
+            />
+          </div>
+        {:else}
+          <div class="rounded-lg bg-gray-50 p-4">
+            <RecurringControls
+              bind:frequency={editRecurringFrequency}
+              bind:interval={editRecurringInterval}
+              bind:startDate={editRecurringStartDate}
+              bind:endDateEnabled={editRecurringEndDateEnabled}
+              bind:endDate={editRecurringEndDate}
+            />
+          </div>
+        {/if}
 
         <div class="flex gap-3">
           <button
@@ -623,6 +693,18 @@
             <iconify-icon class="text-lg" icon="ic:baseline-cancel"></iconify-icon>
             <span>لغو</span>
           </button>
+          {#if editRecurringRuleId && editTransactionKind === 'recurring'}
+            <button
+              type="submit"
+              formaction="?/stopRecurringRule"
+              name="id"
+              value={editRecurringRuleId}
+              class="flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-1.5 text-white duration-75 hover:bg-amber-700"
+            >
+              <iconify-icon class="text-lg" icon="material-symbols:event-busy-outline-rounded"></iconify-icon>
+              <span>توقف تکرار</span>
+            </button>
+          {/if}
         </div>
       </form>
     </div>

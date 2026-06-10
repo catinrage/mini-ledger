@@ -4,7 +4,8 @@ import { fail, superValidate } from 'sveltekit-superforms';
 import { zod } from 'sveltekit-superforms/adapters';
 import { z } from 'zod';
 
-import { TransactionType } from '@prisma/client';
+import { RecurrenceFrequency, TransactionType } from '@prisma/client';
+import { generateRecurringTransactions } from '$lib/server/recurring';
 
 import type { Actions, PageServerLoad } from './$types';
 
@@ -45,16 +46,53 @@ const createTransactionSchema = z
       .optional()
       .transform((val) => (val === '' ? undefined : val)),
     relativeDueDateOffsetDays: z.coerce.number().int().optional(),
+    recurringEnabled: z.boolean().optional().default(false),
+    recurringFrequency: z.nativeEnum(RecurrenceFrequency).optional(),
+    recurringInterval: z.coerce.number().int().min(1).optional(),
+    recurringStartDate: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
+    recurringEndDateEnabled: z.boolean().optional().default(false),
+    recurringEndDate: z
+      .union([z.date(), z.string().length(0)])
+      .optional()
+      .transform((val) => (val === '' || !val ? undefined : val instanceof Date ? val : new Date(val))),
   })
   .superRefine((data, ctx) => {
     const hasFixedDate = data.date instanceof Date;
     const hasRelative = Boolean(data.relativeDueDateTransactionId);
+    const hasRecurringStartDate = data.recurringStartDate instanceof Date;
 
-    if (!hasFixedDate && !hasRelative) {
+    if (!data.recurringEnabled && !hasFixedDate && !hasRelative) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['date'],
         message: 'وارد کردن سررسید اجباری است (ثابت یا نسبی).',
+      });
+    }
+
+    if (data.recurringEnabled && !hasRecurringStartDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringStartDate'],
+        message: 'تاریخ شروع تکرار الزامی است.',
+      });
+    }
+
+    if (data.recurringEnabled && !data.recurringFrequency) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringFrequency'],
+        message: 'نوع تکرار الزامی است.',
+      });
+    }
+
+    if (data.recurringEnabled && !data.recurringInterval) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringInterval'],
+        message: 'فاصله تکرار الزامی است.',
       });
     }
 
@@ -63,6 +101,20 @@ const createTransactionSchema = z
         code: z.ZodIssueCode.custom,
         path: ['relativeDueDateOffsetDays'],
         message: 'در حالت سررسید نسبی، تعداد روز فاصله الزامی است.',
+      });
+    }
+
+    if (
+      data.recurringEnabled &&
+      data.recurringEndDateEnabled &&
+      data.recurringStartDate instanceof Date &&
+      data.recurringEndDate instanceof Date &&
+      data.recurringEndDate < data.recurringStartDate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['recurringEndDate'],
+        message: 'تاریخ پایان نباید قبل از تاریخ شروع باشد.',
       });
     }
   });
@@ -87,6 +139,12 @@ export const load: PageServerLoad = async (event) => {
       date: relativeTransactionIdParam ? undefined : new Date(),
       relativeDueDateTransactionId: relativeTransactionIdParam,
       relativeDueDateOffsetDays: relativeTransactionIdParam ? (relativeOffset ?? 0) : undefined,
+      recurringEnabled: false,
+      recurringFrequency: RecurrenceFrequency.MONTHLY,
+      recurringInterval: 1,
+      recurringStartDate: new Date(),
+      recurringEndDateEnabled: false,
+      recurringEndDate: new Date(),
     },
   });
   const parties = await prisma.transaction.findMany({
@@ -148,6 +206,27 @@ export const actions = {
     }
 
     try {
+      if (form.data.recurringEnabled) {
+        const rule = await prisma.recurringTransactionRule.create({
+          data: {
+            party: form.data.party,
+            type: form.data.type,
+            amount: form.data.amount,
+            description: form.data.description,
+            frequency: form.data.recurringFrequency ?? RecurrenceFrequency.MONTHLY,
+            interval: form.data.recurringInterval ?? 1,
+            startDate: form.data.recurringStartDate ?? new Date(),
+            endDate: form.data.recurringEndDateEnabled ? form.data.recurringEndDate : undefined,
+          },
+        });
+
+        await generateRecurringTransactions(rule);
+
+        return {
+          form,
+        };
+      }
+
       await prisma.transaction.create({
         data: {
           party: form.data.party,
