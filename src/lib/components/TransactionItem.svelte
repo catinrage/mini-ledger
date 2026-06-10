@@ -149,6 +149,7 @@
     const target = document.querySelector<HTMLElement>(`[data-transaction-id="${transactionId}"]`);
     if (!target) return;
 
+    showDependencies = false;
     target.scrollIntoView({ behavior: 'smooth', block: 'center' });
     clearHighlightTimeout();
     removeHighlight();
